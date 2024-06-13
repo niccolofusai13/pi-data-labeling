@@ -121,7 +121,7 @@ Define the start and end images based on the following conditions:
 - The robot's gripper should be open and empty.
 - There should be no contact between the gripper and any object.
 - A clear and noticeable space should exist between the target object and the robot's gripper.
-- The 'start image' is identified as the image just before the gripper begins to move towards the object, indicating the intent to pick it up.
+- The 'start image' is the first image the robot starts to move towards the object, indicating the intent to pick it up.
 
 ***End Image Criteria:***
 - The gripper is closed and has the relevant object in the gripper

@@ -16,12 +16,12 @@ def extract_json_from_response(response):
 
 
 def calculate_expanded_range(
-    start_frame, frames_to_skip, start_img, end_img, expansion_multiplier=2
+    start_frame, video_fps, desired_fps, start_img, end_img, expansion_multiplier=2
 ):
 
     # Calculate the original start and end frames
-    original_start = start_frame + (start_img - 1) * frames_to_skip
-    original_end = start_frame + (end_img - 1) * frames_to_skip
+    original_start = start_frame + (start_img - 1) * video_fps / desired_fps
+    original_end = start_frame + (end_img * video_fps) /desired_fps
 
     # Compute original window size in frames
     original_window_size = original_end - original_start
