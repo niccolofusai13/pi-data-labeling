@@ -3,3 +3,4 @@ selected_frames
 selected_frames_blue_bowl
 .ipynb_checkpoints
 __pycache__
+.env

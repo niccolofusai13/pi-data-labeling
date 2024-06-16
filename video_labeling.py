@@ -1,64 +1,43 @@
 import cv2
-from moviepy.editor import VideoFileClip
-import time
-import base64
-import os
-from openai import OpenAI
-import re
 import json
-
-from IPython.display import Image, display, Audio, Markdown
-
 import asyncio
 from openai import AsyncOpenAI
 
+from config import OPENAI_API_KEY, MODEL, VIDEO_PATH, FRAMES_SEGMENT_SIZE, FPS_OPTIONS
+from utils import extract_frames_from_video
 from prompts import (
     DIFFERENCE_IN_IMAGES_SYSTEM_PROMPT,
     DIFFERENCE_IN_IMAGES_QUESTION,
     SYSTEM_PROMPT,
     QUESTION,
-    TIMESTEP_PROMPT_TEMPLATE,
+
+    PICKUP_REFINE_PROMPT_TEMPLATE,
+    DEPOSIT_REFINE_PROMPT_TEMPLATE,
+    PICKUP_ZOOM_IN_PROMPT_TEMPLATE,
+    DEPOSIT_ZOOM_IN_PROMPT_TEMPLATE,
+    WRONG_OBJECT_CHECK,
+    VIDEO_DESCRIPTION,
 )
-from utils import extract_json_from_response, calculate_expanded_range
 
-openai_api_key = "sk-proj-vq7xTCAdU9d2V0HKp55jT3BlbkFJBTOBsGNVO9ykIuxH5ZrJ"
-client = AsyncOpenAI(api_key=openai_api_key)
+from before_after_prompts import (
+    PICKUP_BEFORE_AFTER_END_PROMPT,
+    PICKUP_BEFORE_AFTER_START_PROMPT,
+    DEPOSIT_BEFORE_AFTER_END_PROMPT,
+    DEPOSIT_BEFORE_AFTER_START_PROMPT,
+    START_FRAME_PICK_ESTIMATE,
+    END_FRAME_PICK_ESTIMATE,
+    START_FRAME_PUT_ESTIMATE,
+    END_FRAME_PUT_ESTIMATE,
+)
+from utils import (
+    extract_json_from_response,
+    calculate_expanded_range,
+    adjust_task_frames,
+    vlm_request, 
+    add_task_type
+)
 
-MODEL = "gpt-4o"
-
-# VIDEO_PATH = "observation_test.mp4"
-# VIDEO_PATH = "blue_bowl_place.mp4"
-VIDEO_PATH = "test2.mp4"
-# VIDEO_PATH = "pi_test_2_short.mp4"
-# VIDEO_PATH = "pi_test_2nd_half.mp4"
-# VIDEO_PATH = "chopstick_video.mp4"
-
-video = cv2.VideoCapture(VIDEO_PATH)
-total_frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
-video.release()
-segment_size = 300
-
-
-def extract_frames_from_video(video_path, start_frame, end_frame, fps=10):
-    base64Frames = []
-    video = cv2.VideoCapture(video_path)
-    video_fps = video.get(cv2.CAP_PROP_FPS)
-
-    frames_to_skip = max(int(video_fps / fps), 1)
-    curr_frame = start_frame
-
-    while curr_frame < end_frame:
-        video.set(cv2.CAP_PROP_POS_FRAMES, curr_frame)
-        success, frame = video.read()
-        if not success:
-            break
-        _, buffer = cv2.imencode(".jpg", frame)
-        base64Frames.append(base64.b64encode(buffer).decode("utf-8"))
-        curr_frame += frames_to_skip
-
-    video.release()
-
-    return base64Frames
+client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 
 
 async def process_frame_segment(
@@ -98,67 +77,82 @@ async def process_frame_segment(
     return response, frames  # Return frames if needed for further processing
 
 
-async def label_moving_objects(frame_ranges):
+async def identify_moved_objects():
+    video = cv2.VideoCapture(VIDEO_PATH)
+    total_frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
+    video.release()
+    frame_ranges = [
+        (max(0, i - FRAMES_SEGMENT_SIZE), min(total_frames, i))
+        for i in range(FRAMES_SEGMENT_SIZE, total_frames + FRAMES_SEGMENT_SIZE, FRAMES_SEGMENT_SIZE)
+    ]
 
-    tasks = [
-        process_frame_segment(
-            start,
-            end,
-            DIFFERENCE_IN_IMAGES_SYSTEM_PROMPT,
-            DIFFERENCE_IN_IMAGES_QUESTION,
+
+    tasks = []
+    for start, end in frame_ranges:
+        frames = extract_frames_from_video(VIDEO_PATH, start, end, fps=1) 
+        tasks.append(
+            vlm_request(
+                client,
+                DIFFERENCE_IN_IMAGES_SYSTEM_PROMPT,
+                DIFFERENCE_IN_IMAGES_QUESTION,
+                frames,
+                extract_json=True
+            )
         )
-        for start, end in frame_ranges
+
+    moved_objects = await asyncio.gather(*tasks)
+
+    return moved_objects
+
+
+async def label_actions(moved_objects):
+    video = cv2.VideoCapture(VIDEO_PATH)
+    total_frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
+    video.release()
+
+    frame_ranges = [
+        (max(0, i - FRAMES_SEGMENT_SIZE), min(total_frames, i))
+        for i in range(FRAMES_SEGMENT_SIZE, total_frames + FRAMES_SEGMENT_SIZE, FRAMES_SEGMENT_SIZE)
     ]
 
-    moved_objects_responses, moved_object_frames = zip(*await asyncio.gather(*tasks))
-
-    moved_objects = [
-        extract_json_from_response(response.choices[0].message.content)
-        for response in moved_objects_responses
-    ]
-
-    return moved_objects, moved_object_frames
-
-
-async def label_robot_actions(moved_objects, frame_ranges):
-
-    # Prepare the second round of requests based on detected changes
-    second_round_tasks = []
-    for (start_frame, end_frame), change in zip(frame_ranges, moved_objects):
+    tasks = []
+    for (start, end), change in zip(frame_ranges, moved_objects):
         if change:
-            second_round_tasks.append(
-                process_frame_segment(
-                    start_frame,
-                    end_frame,
-                    SYSTEM_PROMPT,
-                    QUESTION + json.dumps(change),
-                    include_images=True,
-                )
+            moved_objects_string = ', '.join(change["moved_objects"])
+
+            label_action_prompt = QUESTION.format(
+                moved_objects=moved_objects_string
             )
 
-    second_round_responses = await asyncio.gather(*second_round_tasks)
-    print("done second round")
-    actions = [
-        extract_json_from_response(resp.choices[0].message.content)
-        for resp, _ in second_round_responses
-    ]
-    # Combine actions with frame ranges
+            task = vlm_request(
+                client,
+                SYSTEM_PROMPT,
+                label_action_prompt,
+                extract_frames_from_video(VIDEO_PATH, start, end, fps=1),
+                extract_json=True
+            )
+            tasks.append(task)
+
+    second_round_responses = await asyncio.gather(*tasks)
+
     actions_with_frame_ranges = [
-        {"frame_range": f"{start}-{end}", "actions": action}
-        for ((start, end), action) in zip(frame_ranges, actions)
+        {"frame_range": f"{start}-{end}", "actions": response}
+        for ((start, end), response) in zip(frame_ranges, second_round_responses)
     ]
-    return actions_with_frame_ranges
 
+    labeled_actions = add_task_type(actions_with_frame_ranges)
 
-async def label_video_timesteps(video_path, robot_actions):
+    return labeled_actions
+
+async def label_frame_range(robot_actions):
     tasks_to_process = []
     for action_data in robot_actions:
         start_frame_of_segment = int(action_data["frame_range"].split("-")[0])
         for task in action_data["actions"]["tasks"]:
             tasks_to_process.append(
-                label_episode_timesteps(video_path, task, 30, start_frame_of_segment)
-            ) 
-    # Asynchronously process all tasks
+                label_episode_timesteps(VIDEO_PATH, task, 30, start_frame_of_segment)
+            )
+
     responses = await asyncio.gather(*tasks_to_process)
     return responses
 
@@ -167,11 +161,11 @@ async def label_episode_timesteps(video_path, task, video_fps, start_frame_of_se
     """Process a single robot task by calculating the range, getting frames, and analyzing the task."""
     task_name = task["task"]
     image_range = task["image_range"]
+    task_type = task["task_type"]
     start_img, end_img = map(int, image_range.split("-"))
-    desired_fps = 2
+    sequence_fps = 3
     prev_section_fps = 1
 
-    # Calculate expanded frame range based on image_range
     expanded_start, expanded_end = calculate_expanded_range(
         start_frame_of_segment,
         video_fps,
@@ -180,13 +174,51 @@ async def label_episode_timesteps(video_path, task, video_fps, start_frame_of_se
         end_img,
         expansion_multiplier=3,
     )
+
     frames = extract_frames_from_video(
-        video_path, start_frame=expanded_start, end_frame=expanded_end, fps=desired_fps
+        video_path, start_frame=expanded_start, end_frame=expanded_end, fps=sequence_fps
     )
     num_images = len(frames)
-    timestep_prompt = TIMESTEP_PROMPT_TEMPLATE.format(
-        action=task_name, num_images=num_images
-    )
+
+    while True:  # Loop until the number of images is less than 15
+
+        # Calculate expanded frame range based on image_range
+        expanded_start, expanded_end = calculate_expanded_range(
+            start_frame_of_segment,
+            video_fps,
+            prev_section_fps,
+            start_img,
+            end_img,
+            expansion_multiplier=3,
+        )
+
+        frames = extract_frames_from_video(
+            video_path,
+            start_frame=expanded_start,
+            end_frame=expanded_end,
+            fps=sequence_fps,
+        )
+        num_images = len(frames)
+
+        if num_images < 20:
+            break
+
+        # Reduce the fps by half and recompute if the number of images is 15 or more
+        sequence_fps /= 2
+        if (
+            sequence_fps < 0.2
+        ):  # Ensure fps does not become too low, can adjust this limit as needed
+            break
+
+    if task_type == "pick":
+        timestep_prompt = PICKUP_REFINE_PROMPT_TEMPLATE.format(
+            action=task_name, object=task["object"]
+        )
+    else:
+        timestep_prompt = DEPOSIT_REFINE_PROMPT_TEMPLATE.format(
+            action=task_name, object=task["object"]
+        )
+
     response = await client.chat.completions.create(
         model=MODEL,
         messages=[
@@ -216,10 +248,10 @@ async def label_episode_timesteps(video_path, task, video_fps, start_frame_of_se
     extracted_data = extract_json_from_response(response_content)
     start_frame = (
         expanded_start
-        + (extracted_data.get("start_image") - 1) * video_fps / desired_fps
+        + (extracted_data.get("start_image") - 1) * video_fps / sequence_fps
     )
     end_frame = (
-        expanded_start + (extracted_data.get("end_image")) * video_fps / desired_fps
+        expanded_start + (extracted_data.get("end_image")) * video_fps / sequence_fps
     )
 
     result = {
@@ -230,43 +262,433 @@ async def label_episode_timesteps(video_path, task, video_fps, start_frame_of_se
         "end_image": extracted_data.get("end_image"),
         "start_frame": start_frame,
         "end_frame": end_frame,
-        "fps": desired_fps,
+        "fps": sequence_fps,
+        "task_type": task_type,
+        "object": task["object"],
     }
 
     return result
 
 
-async def label_video_timesteps(video_path, robot_actions):
+async def zoom_episode_timesteps(video_path, action, video_fps):
+    """Process a single robot task by calculating the range, getting frames, and analyzing the task."""
+    task_name = action["task_name"]
+    task_type = action["task_type"]
+    segment_start, segment_end = action["start_frame"], action["end_frame"]
+    sequence_fps = 5
+
+    # Initial setup
+    sequence_fps = 5
+
+    while True:
+        # print(f"task_name {task_name}, fps: {sequence_fps}")
+        # Extract frames with the current fps setting
+        frames = extract_frames_from_video(
+            video_path,
+            start_frame=segment_start,
+            end_frame=segment_end,
+            fps=sequence_fps,
+        )
+        num_images = len(frames)
+
+        # Check number of images and adjust fps accordingly
+        if num_images < 10:
+            # Increase fps to the next higher option if below the minimum frame count
+            current_index = FPS_OPTIONS.index(sequence_fps)
+            if current_index < len(FPS_OPTIONS) - 1:
+                sequence_fps = FPS_OPTIONS[current_index + 1]
+            else:
+                # If already at max fps and frames are still not enough, break the loop
+                break
+        elif num_images > 30:
+            # Decrease fps to the next lower option if above the maximum frame count
+            current_index = FPS_OPTIONS.index(sequence_fps)
+            if current_index > 0:
+                sequence_fps = FPS_OPTIONS[current_index - 1]
+            else:
+                # If already at minimum fps and frames are still too many, break the loop
+                break
+        else:
+            # If the number of frames is within the acceptable range, break the loop
+            break
+
+    # Assign the prompt based on the task type
+    if task_type == "pick":
+        timestep_prompt = PICKUP_ZOOM_IN_PROMPT_TEMPLATE.format(
+            action=task_name, object=action["object"]
+        )
+    else:
+        timestep_prompt = DEPOSIT_ZOOM_IN_PROMPT_TEMPLATE.format(
+            action=task_name, object=action["object"]
+        )
+
+    response = await client.chat.completions.create(
+        model=MODEL,
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": [
+                    "These are a sequence of images from the video. The first image is the start image, and the final image is the end image.",
+                    *map(
+                        lambda x: {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpg;base64,{x}",
+                                "detail": "high",
+                            },
+                        },
+                        frames,
+                    ),
+                    timestep_prompt,
+                ],
+            },
+        ],
+        temperature=0,
+    )
+
+    response_content = response.choices[0].message.content
+    extracted_response = extract_json_from_response(response_content)
+
+    start_frame = (
+        segment_start
+        + (extracted_response.get("start_image") - 1) * video_fps / sequence_fps
+    )
+    end_frame = (
+        segment_start + (extracted_response.get("end_image")) * video_fps / sequence_fps
+    )
+
+    result = {
+        "task_name": task_name,
+        "start_frame_of_segment": segment_start,
+        "end_frame_of_segment": segment_end,
+        "start_image": extracted_response.get("start_image"),
+        "end_image": extracted_response.get("end_image"),
+        "start_frame": start_frame,
+        "end_frame": end_frame,
+        "fps": sequence_fps,
+        "task_type": task_type,
+        "object": action["object"],
+    }
+
+    return result
+
+
+async def relabel_frames_with_higher_fps(labeled_timesteps):
     tasks_to_process = []
-    for action_data in robot_actions:
-        start_frame_of_segment = int(action_data["frame_range"].split("-")[0])
-        for task in action_data["actions"]["tasks"]:
-            tasks_to_process.append(
-                label_episode_timesteps(video_path, task, 30, start_frame_of_segment)
-            )
+    for action in labeled_timesteps:
+        tasks_to_process.append(zoom_episode_timesteps(VIDEO_PATH, action, 30))
     # Asynchronously process all tasks
     responses = await asyncio.gather(*tasks_to_process)
     return responses
 
 
-async def main():
+async def check_wrong_task_episode(video_path, action, video_fps):
+    """Process a single robot task by calculating the range, getting frames, and analyzing the task."""
+    task_name = action["task_name"]
+    task_type = action["task_type"]
+    object = action["object"]
+    start_frame, end_frame = action["start_frame"], action["end_frame"]
+    sequence_fps = 5
 
-    frame_ranges = [
-        (max(0, i - segment_size), min(total_frames, i))
-        for i in range(segment_size, total_frames + segment_size, segment_size)
-    ]
-
-    moved_objects, _ = await label_moving_objects(frame_ranges)
-    actions_with_frame_ranges = await label_robot_actions(moved_objects, frame_ranges)
-    print(f"actions_with_frame_ranges: {actions_with_frame_ranges}")
-    labeled_timesteps = await label_video_timesteps(
-        VIDEO_PATH, actions_with_frame_ranges
+    frames = extract_frames_from_video(
+        video_path, start_frame=start_frame, end_frame=end_frame, fps=sequence_fps
     )
-    print(f"labeled_timesteps are: {labeled_timesteps}")
-    # print("Changes Detected:", changes_detected)
-    # print("Robot Actions:", robot_actions)
-    # print("Final Responses:", final_responses)
+
+    video_description = await vlm_request(
+        SYSTEM_PROMPT, VIDEO_DESCRIPTION, frames, extract_json=False
+    )
+
+    prompt = WRONG_OBJECT_CHECK.format(
+        action=task_name, object=object, description=video_description
+    )
+    wrong_object_response = await vlm_request(
+        SYSTEM_PROMPT, prompt, frames, extract_json=False
+    )
+
+    result = {
+        "task_name": task_name,
+        "start_frame": start_frame,
+        "end_frame": end_frame,
+        "fps": sequence_fps,
+        "task_type": task_type,
+        "object": action["object"],
+        "wrong_object": wrong_object_response,
+    }
+
+    return result
+
+
+async def remove_erroneous_episodes(labeled_timesteps):
+    tasks_to_process = []
+    for action in labeled_timesteps:
+        tasks_to_process.append(check_wrong_task_episode(VIDEO_PATH, action, 30))
+    # Asynchronously process all tasks
+    responses = await asyncio.gather(*tasks_to_process)
+    filtered_tasks_test = [task for task in responses if task["wrong_object"] != "Yes"]
+
+    return filtered_tasks_test
+
+
+async def episode_reflection(video_path, action, video_fps):
+    """Process a single robot task by calculating the range, getting frames, and analyzing the task."""
+    task_name = action["task_name"]
+    task_type = action["task_type"]
+    object = action["object"]
+    start_frame, end_frame = action["start_frame"], action["end_frame"]
+    sequence_fps = 5
+
+    frames = extract_frames_from_video(
+        video_path, start_frame=start_frame, end_frame=end_frame, fps=sequence_fps
+    )
+
+    if task_type == "pick":
+        prompt = PICKUP_ZOOM_IN_PROMPT_TEMPLATE.format(
+            action=task_name, object=action["object"]
+        )
+    else:
+        prompt = DEPOSIT_ZOOM_IN_PROMPT_TEMPLATE.format(
+            action=task_name, object=action["object"]
+        )
+
+    prompt = WRONG_OBJECT_CHECK.format(action=task_name, object=object)
+    wrong_object_response = await vlm_request(
+        SYSTEM_PROMPT, prompt, frames, extract_json=False
+    )
+
+    result = {
+        "task_name": task_name,
+        "start_frame": start_frame,
+        "end_frame": end_frame,
+        "fps": sequence_fps,
+        "task_type": task_type,
+        "object": action["object"],
+        "wrong_object": wrong_object_response,
+    }
+
+    return result
+
+
+def adjust_fps_to_frame_count(
+    video_path, segment_start, segment_end, initial_fps, min_frames, max_frames
+):
+    """
+    Adjust the frames per second (fps) to ensure the number of frames lies within a specified range.
+    """
+    sequence_fps = initial_fps
+    fps_options = [3, 5, 10]
+    while True:
+        frames = extract_frames_from_video(
+            video_path,
+            start_frame=segment_start,
+            end_frame=segment_end,
+            fps=sequence_fps,
+        )
+        num_images = len(frames)
+
+        if num_images < min_frames:
+            # Increase fps to the next higher option if below the minimum frame count
+            current_index = fps_options.index(sequence_fps)
+            if current_index < len(fps_options) - 1:
+                sequence_fps = fps_options[current_index + 1]
+            else:
+                # If already at max fps and frames are still not enough, use the highest possible fps
+                break
+        elif num_images > max_frames:
+            # Decrease fps to the next lower option if above the maximum frame count
+            current_index = fps_options.index(sequence_fps)
+            if current_index > 0:
+                sequence_fps = fps_options[current_index - 1]
+            else:
+                # If already at minimum fps and frames are still too many, use the lowest possible fps
+                break
+        else:
+            # If the number of frames is within the acceptable range, stop adjusting
+            break
+
+    return frames, sequence_fps
+
+
+async def episode_reflection(video_path, action, video_fps):
+    """Process a single robot task by calculating the range, getting frames, and analyzing the task."""
+    task_name = action["task_name"]
+    task_type = action["task_type"]
+    object_name = action["object"]
+    start_frame, end_frame = action["start_frame"], action["end_frame"]
+    sequence_fps = 5  # Assuming a fixed FPS for extraction
+
+    # # Extract frames for analysis
+    # frames = extract_frames_from_video(
+    #     video_path, start_frame=start_frame, end_frame=end_frame, fps=sequence_fps
+    # )
+
+    frames, fps = adjust_fps_to_frame_count(
+        VIDEO_PATH, start_frame, end_frame, sequence_fps, 5, 20
+    )
+
+    # Determine prompts based on task type
+    if task_type == "pick":
+        start_prompt = PICKUP_BEFORE_AFTER_START_PROMPT.format(
+            action=task_name, object=object_name
+        )
+        end_prompt = PICKUP_BEFORE_AFTER_END_PROMPT.format(
+            action=task_name, object=object_name
+        )
+    elif task_type == "put":
+        start_prompt = DEPOSIT_BEFORE_AFTER_START_PROMPT.format(
+            action=task_name, object=object_name
+        )
+        end_prompt = DEPOSIT_BEFORE_AFTER_END_PROMPT.format(
+            action=task_name, object=object_name
+        )
+    else:
+        raise ValueError(f"Unsupported task type: {task_type}")
+
+    # Request analysis for start and end frames
+    start_response = await vlm_request(
+        SYSTEM_PROMPT, start_prompt, frames, temperature=0, extract_json=False
+    )
+    end_response = await vlm_request(
+        SYSTEM_PROMPT, end_prompt, frames, temperature=0, extract_json=False
+    )
+
+    start_check = extract_json_from_response(start_response)["answer"]
+    end_check = extract_json_from_response(end_response)["answer"]
+
+    action["start_answer"] = start_response
+    action["end_answer"] = end_response
+    action["start_check"] = start_check
+    action["end_check"] = end_check
+
+    return action
+
+
+async def run_checks(tasks):
+    tasks_to_process = [episode_reflection(VIDEO_PATH, action, 30) for action in tasks]
+    responses = await asyncio.gather(*tasks_to_process)
+    return responses
+
+
+async def episode_double_click(action):
+    """Process a single robot task by calculating the range, getting frames, and analyzing the task."""
+    task_name = action["task_name"]
+    task_type = action["task_type"]
+    object_name = action["object"]
+    start_frame, end_frame = (
+        action["modified_start_frame"],
+        action["modified_end_frame"],
+    )
+    sequence_fps = 5  # Assuming a fixed FPS for extraction
+    need_modification = action["need_modification"]
+
+    if not need_modification:
+        return action
+
+    while need_modification:
+        # Extract frames for analysis
+        frames = extract_frames_from_video(
+            VIDEO_PATH, start_frame=start_frame, end_frame=end_frame, fps=sequence_fps
+        )
+
+        # Determine prompts based on task type
+        if task_type == "pick":
+            start_prompt = START_FRAME_PICK_ESTIMATE.format(
+                action=task_name, object=object_name
+            )
+            end_prompt = END_FRAME_PICK_ESTIMATE.format(
+                action=task_name, object=object_name
+            )
+            start_check_prompt = PICKUP_BEFORE_AFTER_START_PROMPT.format(
+                action=task_name, object=object_name
+            )
+            end_check_prompt = PICKUP_BEFORE_AFTER_END_PROMPT.format(
+                action=task_name, object=object_name
+            )
+        elif task_type == "put":
+            start_prompt = START_FRAME_PUT_ESTIMATE.format(
+                action=task_name, object=object_name
+            )
+            end_prompt = END_FRAME_PUT_ESTIMATE.format(
+                action=task_name, object=object_name
+            )
+            start_check_prompt = DEPOSIT_BEFORE_AFTER_START_PROMPT.format(
+                action=task_name, object=object_name
+            )
+            end_check_prompt = DEPOSIT_BEFORE_AFTER_END_PROMPT.format(
+                action=task_name, object=object_name
+            )
+        else:
+            raise ValueError(f"Unsupported task type: {task_type}")
+
+        if action["start_check"] != "perfect":
+            start_frame = await vlm_request(
+                SYSTEM_PROMPT, start_prompt, frames, temperature=0, extract_json=True
+            )
+            action["modified_start_frame"] = start_frame.get("answer", "perfect")
+            check_response = await vlm_request(
+                SYSTEM_PROMPT,
+                start_check_prompt,
+                frames,
+                temperature=0,
+                extract_json=True,
+            )
+            action["start_check"] = check_response["answer"]
+
+        if action["end_check"] != "perfect":
+            end_frame = await vlm_request(
+                SYSTEM_PROMPT, end_prompt, frames, temperature=0, extract_json=True
+            )
+            action["modified_end_frame"] = end_frame.get("answer", "perfect")
+            check_response = await vlm_request(
+                SYSTEM_PROMPT,
+                end_check_prompt,
+                frames,
+                temperature=0,
+                extract_json=True,
+            )
+            action["end_check"] = check_response["answer"]
+
+        # Re-evaluate need for modification
+        action["need_modification"] = (
+            action["start_check"] != "perfect" or action["end_check"] != "perfect"
+        )
+
+        return action
+
+
+async def refine_labels(tasks):
+    adjusted_tasks = adjust_task_frames(tasks)
+
+    tasks_to_process = [episode_double_click(action) for action in adjusted_tasks]
+    responses = await asyncio.gather(*tasks_to_process)
+    return responses
+
+
+async def label_video():
+
+    print(f"Step 1: Identifying which objects have moved...")
+    moved_objects, _ = await identify_moved_objects()
+
+    print(f"Step 2: Identifying which actions have taken place...")
+    labeled_actions = await label_actions(moved_objects)
+
+    labeled_frames = await label_frame_range(labeled_actions)
+    print(f"Step 3: Identifying the frame range...")
+    higher_fps_labeled_frames = await relabel_frames_with_higher_fps(labeled_frames)
+
+    print(f"Step 4: Removing erroneos episodes...")
+    qa_labels = await remove_erroneous_episodes(higher_fps_labeled_frames)
+
+    print(f"Step 5: Running checks...")
+    checks_feedback = await run_checks(qa_labels)
+
+    print(f"Step 6: Iteratively refining labels until all checks pass...")
+    final_results = await refine_labels(checks_feedback)
+
+    print(f"Step 7: Done... saving results...")
+    with open("final_results.json", "w") as file:
+        json.dump(final_results, file, indent=4)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(label_video())
