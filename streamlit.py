@@ -1,163 +1,101 @@
 import streamlit as st
-import cv2 
+import cv2
 import base64
-import numpy as np
 from PIL import Image
 import time
 import pandas as pd
 from io import BytesIO
+import json
+from utils import extract_frames_from_video
 
-def extract_frames_from_video(video_path, start_frame, end_frame, fps=10):
-    base64Frames = []
-    video = cv2.VideoCapture(video_path)
-    video_fps = video.get(cv2.CAP_PROP_FPS)
 
-    frames_to_skip = max(int(video_fps / fps), 1)
-    curr_frame = start_frame
+def show_video(task_name, task_df):
+    global img_placeholder
+    task = task_df[task_df["task_name"] == task_name].iloc[0]
+    VIDEO_PATH = "test2.mp4"
 
-    while curr_frame < end_frame:
-        video.set(cv2.CAP_PROP_POS_FRAMES, curr_frame)
-        success, frame = video.read()
-        if not success:
-            break
-        _, buffer = cv2.imencode(".jpg", frame)
-        base64Frames.append(base64.b64encode(buffer).decode("utf-8"))
-        curr_frame += frames_to_skip
+    frames = extract_frames_from_video(
+        VIDEO_PATH, int(task["start_frame"]), int(task["end_frame"]), 10
+    )
 
-    video.release()
+    if img_placeholder is None:
+        img_placeholder = st.empty()
 
-    return base64Frames
+    display_video(frames)
 
-tasks = [{'task_name': 'Pick up Glass Bowl',
-  'start_frame_of_segment': 0.0,
-  'end_frame_of_segment': 160.0,
-  'start_image': 6,
-  'end_image': 22,
-  'start_frame': 30.0,
-  'end_frame': 132.0,
-  'fps': 5,
-  'task_type': 'pick'},
- {'task_name': 'Put Glass Bowl into Clear Plastic Box',
-  'start_frame_of_segment': 100.0,
-  'end_frame_of_segment': 180.0,
-  'start_image': 2,
-  'end_image': 12,
-  'start_frame': 106.0,
-  'end_frame': 172.0,
-  'fps': 5,
-  'task_type': 'put'},
- {'task_name': 'Pick up Cardboard Food Container',
-  'start_frame_of_segment': 240.0,
-  'end_frame_of_segment': 270.0,
-  'start_image': 1,
-  'end_image': 8,
-  'start_frame': 240.0,
-  'end_frame': 264.0,
-  'fps': 10,
-  'task_type': 'pick'},
- {'task_name': 'Put Cardboard Food Container into Blue Trash Bin',
-  'start_frame_of_segment': 180.0,
-  'end_frame_of_segment': 260.0,
-  'start_image': 6,
-  'end_image': 12,
-  'start_frame': 210.0,
-  'end_frame': 252.0,
-  'fps': 5,
-  'task_type': 'put'},
- {'task_name': 'Pick up Orange Plate',
-  'start_frame_of_segment': 310.0,
-  'end_frame_of_segment': 390.0,
-  'start_image': 1,
-  'end_image': 8,
-  'start_frame': 310.0,
-  'end_frame': 358.0,
-  'fps': 5,
-  'task_type': 'pick'},
- {'task_name': 'Put Orange Plate into Clear Plastic Box',
-  'start_frame_of_segment': 310.0,
-  'end_frame_of_segment': 380.0,
-  'start_image': 4,
-  'end_image': 11,
-  'start_frame': 328.0,
-  'end_frame': 376.0,
-  'fps': 5,
-  'task_type': 'put'},
- {'task_name': 'Pick up Plastic Bowl',
-  'start_frame_of_segment': 440.0,
-  'end_frame_of_segment': 480.0,
-  'start_image': 1,
-  'end_image': 10,
-  'start_frame': 440.0,
-  'end_frame': 470.0,
-  'fps': 10,
-  'task_type': 'pick'},
- {'task_name': 'Put Plastic Bowl into Clear Plastic Box',
-  'start_frame_of_segment': 450.0,
-  'end_frame_of_segment': 530.0,
-  'start_image': 2,
-  'end_image': 9,
-  'start_frame': 456.0,
-  'end_frame': 504.0,
-  'fps': 5,
-  'task_type': 'put'},
- {'task_name': 'Pick up Metal Spoon',
-  'start_frame_of_segment': 480.0,
-  'end_frame_of_segment': 720.0,
-  'start_image': 1,
-  'end_image': 20,
-  'start_frame': 480.0,
-  'end_frame': 680.0,
-  'fps': 3,
-  'task_type': 'pick'},
- {'task_name': 'Put Metal Spoon into Clear Plastic Box',
-  'start_frame_of_segment': 710.0,
-  'end_frame_of_segment': 760.0,
-  'start_image': 2,
-  'end_image': 9,
-  'start_frame': 713.0,
-  'end_frame': 737.0,
-  'fps': 10,
-  'task_type': 'put'},
- {'task_name': 'Pick up Aluminum Container',
-  'start_frame_of_segment': 760.0,
-  'end_frame_of_segment': 840.0,
-  'start_image': 1,
-  'end_image': 8,
-  'start_frame': 760.0,
-  'end_frame': 808.0,
-  'fps': 5,
-  'task_type': 'pick'},
- {'task_name': 'Put Aluminum Container into Blue Trash Bin',
-  'start_frame_of_segment': 800.0,
-  'end_frame_of_segment': 850.0,
-  'start_image': 2,
-  'end_image': 11,
-  'start_frame': 803.0,
-  'end_frame': 833.0,
-  'fps': 10,
-  'task_type': 'put'},
- {'task_name': 'Pick up Black Chopstick',
-  'start_frame_of_segment': 760.0,
-  'end_frame_of_segment': 1040.0,
-  'start_image': 1,
-  'end_image': 6,
-  'start_frame': 760.0,
-  'end_frame': 820.0,
-  'fps': 3,
-  'task_type': 'pick'},
- {'task_name': 'Put Black Chopstick into Clear Plastic Box',
-  'start_frame_of_segment': 1030.0,
-  'end_frame_of_segment': 1100.0,
-  'start_image': 2,
-  'end_image': 12,
-  'start_frame': 1036.0,
-  'end_frame': 1102.0,
-  'fps': 5,
-  'task_type': 'put'}]
+
+def display_video(frames):
+    global img_placeholder
+    for frame in frames:
+        img_data = base64.b64decode(frame)
+        img = Image.open(BytesIO(img_data))
+        img_placeholder.image(img, use_column_width=True)
+        time.sleep(0.1)
+
+
+with open("best_results.json", "r") as file:
+    tasks = json.load(file)
+
+
+# st.title('Robot Task Video Analysis')
+# st.write('The data labeling process in the example below is completely autonomous. \n The only input is the mp4 video.')
+
+# task_df = pd.DataFrame(tasks)
+# task_df['duration'] = task_df['end_frame'] - task_df['start_frame']
+# st.dataframe(task_df[['task_name', 'start_frame', 'end_frame', 'duration']])
+
+# img_placeholder = None
+
+
+# selected_task_name = st.selectbox(
+#     'Select a task to view:',
+#     task_df['task_name'].unique(),
+#     index=0,
+#     on_change=lambda: show_video(st.session_state['selected_task_name'], task_df),
+#     key='selected_task_name'
+# )
+
+# show_video(selected_task_name, task_df)
+
+# Streamlit layout
+st.title("PI Automated Data Labeling Demo")
+st.write(
+    "The data labeling process in the example below is fully autonomous. \n\n The only input is the mp4 video. "
+)
+
+# Display task data in a table and handle selection
+task_df = pd.DataFrame(tasks)  # Ensure 'tasks' is defined or fetched appropriately
+task_df["duration"] = task_df["end_frame"] - task_df["start_frame"]
+st.dataframe(task_df[["task_name", "start_frame", "end_frame", "duration"]])
+
+# Dropdown for selecting a task, automatically updates on change
+selected_task_name = st.selectbox(
+    "Select a task to view:",
+    task_df["task_name"].unique(),
+    on_change=lambda: show_video(selected_task_name, task_df),
+)
+
+
+def show_video(selected_task_name, task_df):
+    # Find the task details based on selected task name
+    task = task_df[task_df["task_name"] == selected_task_name].iloc[0]
+    VIDEO_PATH = "test2.mp4"  # Specify the path to your video file
+
+    # Extract frames for the selected task
+    frames = extract_frames_from_video(
+        VIDEO_PATH,
+        int(task["start_frame"]),
+        int(task["end_frame"]),
+        10,  # or adjust fps as needed
+    )
+
+    # Display the video frames
+    display_video(frames)
+
 
 def display_video(frames):
     img_placeholder = st.empty()
-    
+
     # Iterate over each frame and update the display
     for frame in frames:
         img_data = base64.b64decode(frame)
@@ -165,25 +103,6 @@ def display_video(frames):
         img_placeholder.image(img, use_column_width=True)
         time.sleep(0.1)  # Adjust frame rate as needed
 
-# Streamlit layout
-st.title('Robot Task Video Analysis')
 
-# Display task data in a table and handle selection
-task_df = pd.DataFrame(tasks)
-task_df['duration'] = task_df['end_frame'] - task_df['start_frame']
-st.dataframe(task_df[['task_name', 'start_frame', 'end_frame', 'duration']])
-
-task_name = task_df['task_name'].unique()
-selected_task_name = st.selectbox('Select a task to view:', task_name)
-
-
-# selected_idx = st.selectbox('Select an episode to view:', range(len(tasks)))
-
-if st.button('Show Video'):
-    task = task_df[task_df['task_name'] == selected_task_name].iloc[0]
-
-    VIDEO_PATH = "test2.mp4"  # Specify the path to your video file
-    frames = extract_frames_from_video(VIDEO_PATH, task['start_frame'], task['end_frame'], 10)
-    display_video(frames)
-
-
+# Initial call to show video for the default selected task
+show_video(selected_task_name, task_df)
