@@ -39,29 +39,11 @@ def extract_json_from_response(response):
         print(f"Error decoding JSON or accessing response: {e}")
         return None
 
+def calculate_expanded_range(start_frame, end_frame, buffer_multiplier=2): 
+    expanded_start = max(0, start_frame - buffer_multiplier * 30) # this is actually number of seconds - easier imo to count like that
+    expanded_end = end_frame + buffer_multiplier * 30 # this is actually number of seconds - easier imo to count like that
+    return expanded_start, expanded_end
 
-def calculate_expanded_range(
-    start_frame, video_fps, prev_section_fps, start_img, end_img, expansion_multiplier=2
-):
-
-    # Calculate the original start and end frames
-    original_start = start_frame + (start_img - 1) * video_fps / prev_section_fps
-    original_end = start_frame + (end_img * video_fps) / prev_section_fps
-
-    # Compute original window size in frames
-    original_window_size = original_end - original_start
-
-    # Calculate the expanded window size using the multiplier
-    expanded_window_size = original_window_size * expansion_multiplier
-
-    # Calculate the additional buffer needed on each side
-    buffer = (expanded_window_size - original_window_size) // 2
-
-    # Calculate the new start and end frames with additional buffer
-    new_start = max(0, original_start - buffer)
-    new_end = original_end + buffer
-
-    return new_start, new_end
 
 
 def calculate_new_frames(start_frame, end_frame, fps, steps=3, direction="negative"):

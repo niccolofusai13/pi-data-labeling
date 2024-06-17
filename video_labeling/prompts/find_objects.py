@@ -1,6 +1,6 @@
 FIND_OBJECTS_SYSTEM_PROMPT = """
 
-You will be presented with images of a specific environment featuring a table with various objects and a robot arm performing tasks. The environment includes the following components:
+You will be presented with images of a specific environment featuring a table with various objects and a robot arm performing actions. The environment includes the following components:
 
 **Environment and Components:**
 - **Objects:**

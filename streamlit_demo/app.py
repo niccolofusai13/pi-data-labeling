@@ -7,9 +7,8 @@ from config import STREAMLIT_RESULTS_PATH
 
 
 with open(STREAMLIT_RESULTS_PATH, "r") as file:
-    tasks = json.load(file)
+    results = json.load(file)
 
-import streamlit as st
 import base64
 from PIL import Image
 import time
@@ -71,21 +70,21 @@ st.write(
 )
 
 # Display task data in a table and handle selection
-task_df = pd.DataFrame(tasks)  # Ensure 'tasks' is defined or fetched appropriately
+task_df = pd.DataFrame(results)  # Ensure 'tasks' is defined or fetched appropriately
 task_df["duration"] = task_df["end_frame"] - task_df["start_frame"]
-st.dataframe(task_df[["task_name", "start_frame", "end_frame", "duration"]])
+st.dataframe(task_df[["action", "start_frame", "end_frame", "duration"]])
 
 # Dropdown for selecting a task, automatically updates on change
 selected_task_name = st.selectbox(
-    "Select a task to view:",
-    task_df["task_name"].unique(),
+    "Select an action to view:",
+    task_df["action"].unique(),
     on_change=lambda: show_video(selected_task_name, task_df),
 )
 
 
 def show_video(selected_task_name, task_df):
     # Find the task details based on selected task name
-    task = task_df[task_df["task_name"] == selected_task_name].iloc[0]
+    task = task_df[task_df["action"] == selected_task_name].iloc[0]
 
     # Extract frames for the selected task
     frames = extract_frames_from_video(
