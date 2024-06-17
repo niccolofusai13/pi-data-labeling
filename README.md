@@ -49,7 +49,12 @@ pi-data-labeling/
    ```
 
 2. **Install dependencies**:
-   Follow the installation instructions provided above to set up your environment using `conda` and install the required dependencies.
+   Follow the installation instructions provided to set up your environment using `conda` and install the required dependencies.
+   ```sh
+    conda create --name pi python=3.10
+    conda activate pi
+    pip install -r requirements.txt
+    ```
 
 3. **Copy the environment configuration**:
    Copy the `.env.example` file to `.env` and update any necessary environment variables.
