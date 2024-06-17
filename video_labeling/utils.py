@@ -64,24 +64,6 @@ def calculate_expanded_range(
     return new_start, new_end
 
 
-
-def add_task_type(dataset):
-    for item in dataset:
-        for task in item["actions"]["tasks"]:
-            first_word = task["task"].split()[0].lower()
-
-            if "pick" == first_word:
-                task["task_type"] = "pick"
-            elif "put" == first_word:
-                task["task_type"] = "put"
-            else:
-                raise ValueError(
-                    f"Task description does not start with 'Pick' or 'Put': {task['task']}"
-                )
-
-    return dataset
-
-
 def calculate_new_frames(start_frame, end_frame, fps, steps=3, direction="negative"):
     window_size = (
         30 / fps
@@ -210,24 +192,6 @@ async def vlm_request(
 
     return response
 
-
-def add_task_type(dataset):
-    for item in dataset:
-        for task in item["actions"]["tasks"]:
-            # Extract the first word from the task description and convert it to lowercase
-            first_word = task["task"].split()[0].lower()
-
-            # Determine the type of task based on the first word, checked in lowercase for robustness
-            if "pick" == first_word:
-                task["task_type"] = "pick"
-            elif "put" == first_word:
-                task["task_type"] = "put"
-            else:
-                raise ValueError(
-                    f"Task description does not start with 'Pick' or 'Put': {task['task']}"
-                )
-
-    return dataset
 
 
 def adjust_fps_to_frame_count(
