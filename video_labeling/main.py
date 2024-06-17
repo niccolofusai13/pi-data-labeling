@@ -3,17 +3,19 @@ import asyncio
 from openai import AsyncOpenAI
 import os
 
-from config import (
-    RESULTS_OUTPUT_PATH,
-    OPENAI_API_KEY
-)
+from config import RESULTS_OUTPUT_PATH, OPENAI_API_KEY
 
 from detect_objects import identify_moved_objects
 from label_actions import label_actions_in_episode
-from label_frames import label_episode_frame_ranges, relabel_episode_frames_with_higher_fps, adjusting_frames_in_episode
+from label_frames import (
+    label_episode_frame_ranges,
+    relabel_episode_frames_with_higher_fps,
+    adjusting_frames_in_episode,
+)
 from checks import remove_erroneous_actions, run_checks
 
 client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+
 
 async def label_video():
 
@@ -25,7 +27,9 @@ async def label_video():
 
     labeled_frames = await label_episode_frame_ranges(labeled_actions)
     print(f"Step 3: Labeling the frame range...")
-    higher_fps_labeled_frames = await relabel_episode_frames_with_higher_fps(labeled_frames)
+    higher_fps_labeled_frames = await relabel_episode_frames_with_higher_fps(
+        labeled_frames
+    )
 
     print(f"Step 4: Removing erroneos episodes...")
     qa_labels = await remove_erroneous_actions(higher_fps_labeled_frames)

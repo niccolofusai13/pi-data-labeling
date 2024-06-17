@@ -43,9 +43,7 @@ async def label_episode_frame_ranges(robot_actions):
     return responses
 
 
-async def label_action_frame_range(
-    video_path, task, video_fps, start_frame_of_segment
-):
+async def label_action_frame_range(video_path, task, video_fps, start_frame_of_segment):
     """Process a single robot task by calculating the range, getting frames, and analyzing the task."""
     task_name = task["task"]
     image_range = task["image_range"]
