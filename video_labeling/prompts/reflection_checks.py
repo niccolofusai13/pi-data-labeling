@@ -1,6 +1,25 @@
+VIDEO_DESCRIPTION = """
+Please explain succintly what is happening in this video. 
+"""
+
+CHECK_WRONG_ACTION = """
+### Analyze the Robot's Action: {action}
+
+**Context:**
+Your goal is to verify this action in the images is the same action as {action}.
+
+**Description of the video:**
+{description}
+
+**Instruction:**
+Please answer the following question? 
+- Are more than half of the images showing a task other than {action}? 
+
+Reply with a simple yes or no and nothing else.
+"""
 
 
-PICKUP_BEFORE_AFTER_START_PROMPT = """
+CHECK_PICKUP_START_IMAGE_TIMING = """
 ### Analyze the Robot's Pickup Task: {action}
 
 **Context:**
@@ -32,7 +51,7 @@ Example:
 }}
 """
 
-PICKUP_BEFORE_AFTER_END_PROMPT = """
+CHECK_PICKUP_END_IMAGE_TIMING = """
 ### Analyze the Robot's Pickup Task: {action}
 
 **Context:**
@@ -65,7 +84,7 @@ Example:
 """
 
 
-DEPOSIT_BEFORE_AFTER_START_PROMPT = """
+CHECK_DEPOSIT_START_IMAGE_TIMING = """
 ### Analyze the Robot's Putting Task: {action}
 
 **Context:**
@@ -97,7 +116,7 @@ Example:
 """
 
 
-DEPOSIT_BEFORE_AFTER_END_PROMPT = """
+CHECK_DEPOSIT_END_IMAGE_TIMING = """
 ### Analyze the Robot's Putting Task: {action}
 
 **Context:**
@@ -126,134 +145,4 @@ Example:
 {{
 "answer":"perfect"
 }}
-"""
-
-
-"""
-------------------------------------------------------------------------------------------------------------------------------------------------
-"""
-
-
-START_FRAME_PICK_ESTIMATE = """
-### Analyze the Robot's Pickup Task: {action}
-
-**Context:**
-You are assigned to analyze a sequence in which a robot attempts to pick up {object}. The aim is to identify the correct START image that matches the criteria below.
-
-**Helpful information:**: 
-To check if an object is grasped, check if the robot grippers are holding anything. 
-If an object is no longer visible on the table, and is not in the robot's gripper, it means it has been deposited in the destination.
-The black chopstick is often hard to see, especially when grasped. Please pay special attention if the object is the black chopstick.
-
-**Criteria needeed for successful START image for PICK UP:**
-- In the first image, the {object} needs to be on the table 
-- In the first image, there is some space between the gripper and the {object}
-- In the first image, the robot has not yet grasped the object
-
-**Criteria needeed for successful END image for picking up:**
-- In the final image, the {object} has been lifted off the table, enough to see space between the object and the table.
-- In the final image, the {object} is grasped by the robot
-
-**Instruction:**
-From the images above, which image best describes the START image criteria above.
-
-After reasoning about the answer, return a JSON for your answer.
-Example:  
-{{
-"answer":3
-}}
-"""
-
-
-END_FRAME_PICK_ESTIMATE = """
-### Analyze the Robot's Putting Task: {action}
-
-**Context:**
-You are assigned to analyze a sequence in which a robot attempts to pick up {object}. The aim is to identify the correct END image that matches the criteria below.
-
-**Helpful information:**: 
-To check if an object is grasped, check if the robot grippers are holding anything. 
-If an object is no longer visible on the table, and is not in the robot's gripper, it means it has been deposited in the destination.
-The black chopstick is often hard to see, especially when grasped. Please pay special attention if the object is the black chopstick.
-
-**Criteria needeed for successful START image for PICK UP:**
-- In the first image, the {object} needs to be on the table 
-- In the first image, there is some space between the gripper and the {object}
-- In the first image, the robot has not yet grasped the object
-
-**Criteria needeed for successful END image for picking up:**
-- In the final image, the {object} has been lifted off the table, enough to see space between the object and the table.
-- In the final image, the {object} is grasped by the robot
-
-**Instruction:**
-From the images above, which image best describes the END image criteria above.
-
-After reasoning about the answer, return a JSON for your answer.
-Example:  
-{{
-"answer": 9
-}}
-"""
-
-
-START_FRAME_PUT_ESTIMATE = """
-### Analyze the Robot's Putting Task: {action}
-
-**Context:**
-You are assigned to analyze a sequence in which a robot attempts to deposit an {object} into a destination. The aim is to identify the correct START image that matches the criteria below.
-
-**Helpful information:**: 
-To check if an object is grasped, check if the robot grippers are holding anything. 
-If an object is no longer visible on the table, and is not in the robot's gripper, it means it has been deposited in the destination.
-If the task is to place the object in the bin, once deposited you are not able to see the object any more. 
-The black chopstick is often hard to see, especially when grasped. Please pay special attention if the object is the black chopstick.
-
-**Criteria needeed for successful START image for depositing an object:**
-- In the first image, the {object} needs to be *starting* lifted above the table (to any degree).
-- In the first image, the {object} needs to be not have been released yet.
-
-**Criteria needeed for successful END image for depositing an object:**
-- In the final image, the {object} is no longer airborn. 
-- In the final image, the {object} was placed into one of the bin or plastic container
-
-**Instruction:**
-From the images above, which image best describes the START image criteria above.
-
-After reasoning about the answer, return a JSON for your answer.
-Example:  
-{{
-"answer":3
-}}
-"""
-
-
-END_FRAME_PUT_ESTIMATE = """
-### Analyze the Robot's Putting Task: {action}
-
-**Context:**
-You are assigned to analyze a sequence in which a robot attempts to deposit an {object} into a destination. The aim is to identify the correct START image that matches the criteria below.
-
-**Helpful information:**: 
-To check if an object is grasped, check if the robot grippers are holding anything. 
-If an object is no longer visible on the table, and is not in the robot's gripper, it means it has been deposited in the destination.
-If the task is to place the object in the bin, once deposited you are not able to see the object any more. 
-The black chopstick is often hard to see, especially when grasped. Please pay special attention if the object is the black chopstick.
-
-**Criteria needeed for successful START image for depositing an object:**
-- In the first image, the {object} needs to be *starting* lifted above the table (to any degree).
-- In the first image, the {object} needs to be not have been released yet.
-
-**Criteria needeed for successful END image for depositing an object:**
-- In the final image, the {object} is no longer airborn. 
-- In the final image, the {object} was placed into one of the bin or plastic container
-
-**Instruction:**
-From the images above, which image best describes the END image criteria above.
-
-After reasoning about the answer, return a JSON for your answer.
-Example:  
-{{
-"answer": 9
-}}
-
 """
