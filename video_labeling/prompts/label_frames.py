@@ -18,6 +18,7 @@ Also make sure that if the robot is handling multiple objects in the series of i
 
 Example json output 1: 
 [Explanation for answer]
+```json
 {{
 "start_image":2,
 "end_image":8
@@ -43,6 +44,7 @@ Also make sure that if the robot is handling multiple objects in the series of i
 
 Example json output 1: 
 [Explanation for answer]
+```json
 {{
 "start_image":2,
 "end_image":8
@@ -72,10 +74,10 @@ You are assigned to analyze a sequence in which a robot attempts to pick up {obj
 
 **Response Structure:**
 - Provide frame numbers for the start and end of the pickup action. 
-- If the action is not completely captured within the provided frames, specify whether the necessary frames occur 'before' or 'after' the footage provided.
 
 **Sample Response:**
 [Explanation]
+```json
 {{
   "start_image": 2,
   "end_image": 8
@@ -105,10 +107,10 @@ You are tasked with analyzing a sequence where a robot is engaged in depositing 
 
 **Response Structure:**
 - Provide frame numbers for the start and end of the deposit action. 
-- If the complete action is not captured within the provided frames, specify whether the necessary frames occur 'before' or 'after' the footage provided.
 
 **Sample Response:**
 [Explanation]
+```json
 {{
   "start_image": 2,
   "end_image": 9
@@ -141,6 +143,7 @@ From the images above, which image best describes the START image criteria above
 
 After reasoning about the answer, return a JSON for your answer.
 Example:  
+```json
 {{
 "answer":3
 }}
@@ -172,6 +175,7 @@ From the images above, which image best describes the END image criteria above.
 
 After reasoning about the answer, return a JSON for your answer.
 Example:  
+```json
 {{
 "answer": 9
 }}
@@ -203,6 +207,7 @@ From the images above, which image best describes the START image criteria above
 
 After reasoning about the answer, return a JSON for your answer.
 Example:  
+```json
 {{
 "answer":3
 }}
@@ -234,6 +239,7 @@ From the images above, which image best describes the END image criteria above.
 
 After reasoning about the answer, return a JSON for your answer.
 Example:  
+```json
 {{
 "answer": 9
 }}

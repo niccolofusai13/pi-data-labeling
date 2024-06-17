@@ -95,7 +95,6 @@ async def label_action_frame_range(video_path, task, video_fps, start_frame_of_s
         ):  # Ensure fps does not become too low, can adjust this limit as needed
             break
 
-   
     if task_type == "pick":
         timestep_prompt = LABEL_PICKUP_ACTION.format(
             action=task_name, object=task["object"]
@@ -180,8 +179,11 @@ async def relabel_action_frames_with_higher_fps(video_path, action, video_fps):
         client, SYSTEM_PROMPT, timestep_prompt, frames, temperature=0, extract_json=True
     )
 
-    start_image_number = int(response.get("start_image"))
-    end_image_number = int(response.get("end_image"))
+    start_image_number = response.get("start_image")
+    end_image_number = response.get("end_image")
+
+    if start_image_number is None or end_image_number is None:
+        return None
 
     start_frame = segment_start + (start_image_number - 1) * video_fps / sequence_fps
     end_frame = segment_start + (end_image_number) * video_fps / sequence_fps
@@ -209,7 +211,8 @@ async def relabel_episode_frames_with_higher_fps(labeled_timesteps):
             relabel_action_frames_with_higher_fps(VIDEO_PATH, action, 30)
         )
     responses = await asyncio.gather(*tasks_to_process)
-    return responses
+    filtered_responses = [response for response in responses if response is not None]
+    return filtered_responses
 
 
 async def adjust_frames_for_action(action):

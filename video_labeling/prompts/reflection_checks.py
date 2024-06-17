@@ -46,6 +46,7 @@ Focus on evaluating the first image only.
 After reasoning about the answer, return a JSON indicating whether the perfect START image for this task is "perfect" (meaning the perfect image is the first image showed above), "early" (meaning the first image showed above is too early), or "late" (meaning the first image showed above is too late).
 
 Example:  
+```json
 {{
 "answer":"perfect"
 }}
@@ -77,7 +78,8 @@ Focus on evaluating the last image only.
 
 After reasoning about the answer, return a JSON indicating whether the perfect END image for this task is "perfect" (meaning its the final image showed above), "early" (meaning the final image showed above is too early), or "late" (meaning the final image showed above is too late).
 
-Example:  
+Example: 
+```json 
 {{
 "answer":"perfect"
 }}
@@ -109,7 +111,8 @@ Focus on evaluating the first image only.
 
 After reasoning about the answer, return a JSON indicating whether the perfect START image for this task is "perfect" (meaning the perfect image is the first image showed above), "early" (meaning the first image showed above is too early), or "late" (meaning the first image showed above is too late).
 
-Example:  
+Example:
+```json
 {{
 "answer":"perfect"
 }}
@@ -142,6 +145,7 @@ Focus on evaluating the last image only.
 
 After reasoning about the answer, return a JSON indicating whether the perfect END image for this task is "perfect" (meaning its the final image showed above), "early" (meaning the final image showed above is too early), or "late" (meaning the final image showed above is too late).
 Example:  
+```json
 {{
 "answer":"perfect"
 }}
