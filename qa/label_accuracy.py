@@ -51,4 +51,3 @@ def calculate_label_accuracy(ground_truth, predictions):
     return accuracy, incorrect_pairs
 
 
-accuracy, incorrect_pairs = calculate_label_accuracy(ground_truth_labels, predictions)
