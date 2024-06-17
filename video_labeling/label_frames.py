@@ -49,7 +49,7 @@ async def label_action_frame_range(video_path, task, video_fps, start_frame_of_s
     image_range = task["image_range"]
     task_type = task["task_type"]
     start_img, end_img = map(int, image_range.split("-"))
-    sequence_fps = 3
+    sequence_fps = 5
     prev_section_fps = 1
 
     expanded_start, expanded_end = calculate_expanded_range(
@@ -66,7 +66,7 @@ async def label_action_frame_range(video_path, task, video_fps, start_frame_of_s
     )
     num_images = len(frames)
 
-    while True:  # Loop until the number of images is less than 15
+    while True:  # Loop until the number of images is less than 20
 
         expanded_start, expanded_end = calculate_expanded_range(
             start_frame_of_segment,
@@ -95,6 +95,7 @@ async def label_action_frame_range(video_path, task, video_fps, start_frame_of_s
         ):  # Ensure fps does not become too low, can adjust this limit as needed
             break
 
+   
     if task_type == "pick":
         timestep_prompt = LABEL_PICKUP_ACTION.format(
             action=task_name, object=task["object"]
