@@ -55,7 +55,7 @@ async def determine_erroneous_action(action, fps=5):
     )
 
     prompt = CHECK_WRONG_ACTION.format(
-        action=action["task_name"],
+        action=action["action"],
         object=action["object"],
         description=video_description,
     )
@@ -64,11 +64,11 @@ async def determine_erroneous_action(action, fps=5):
     )
 
     return {
-        "task_name": action["task_name"],
+        "action": action["action"],
         "start_frame": start_frame,
         "end_frame": end_frame,
         "fps": fps,
-        "task_type": action["task_type"],
+        "action_type": action["action_type"],
         "object": action["object"],
         "wrong_object": wrong_object_response,
     }
@@ -91,7 +91,7 @@ async def run_action_check(action, fps=5):
     )
 
     start_prompt, end_prompt = create_check_prompts(
-        action["task_type"], action["task_name"], action["object"]
+        action["action_type"], action["action"], action["object"]
     )
     start_response = await vlm_request(
         client, SYSTEM_PROMPT, start_prompt, frames, extract_json=False

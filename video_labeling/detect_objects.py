@@ -17,23 +17,12 @@ from video_labeling.utils import (
     vlm_request,
 )
 
-client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 
-
-async def identify_moved_objects():
-    video = cv2.VideoCapture(VIDEO_PATH)
-    total_frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
-    video.release()
-    frame_ranges = [
-        (max(0, i - FRAMES_SEGMENT_SIZE), min(total_frames, i))
-        for i in range(
-            FRAMES_SEGMENT_SIZE, total_frames + FRAMES_SEGMENT_SIZE, FRAMES_SEGMENT_SIZE
-        )
-    ]
-
+async def identify_moved_objects(client, video_path, video_chunks):
+    """Identifying which objects have moved positions in the chunks"""
     tasks = []
-    for start, end in frame_ranges:
-        frames = extract_frames_from_video(VIDEO_PATH, start, end, fps=1)
+    for start, end in video_chunks:
+        frames = extract_frames_from_video(video_path, start, end, fps=1)
         tasks.append(
             vlm_request(
                 client,
