@@ -255,3 +255,43 @@ def add_task_type(dataset):
                 )
 
     return dataset
+
+
+def adjust_fps_to_frame_count(
+    video_path, segment_start, segment_end, initial_fps, min_frames, max_frames
+):
+    """
+    Adjust the frames per second (fps) to ensure the number of frames lies within a specified range.
+    """
+    sequence_fps = initial_fps
+    fps_options = [3, 5, 10]
+    while True:
+        frames = extract_frames_from_video(
+            video_path,
+            start_frame=segment_start,
+            end_frame=segment_end,
+            fps=sequence_fps,
+        )
+        num_images = len(frames)
+
+        if num_images < min_frames:
+            # Increase fps to the next higher option if below the minimum frame count
+            current_index = fps_options.index(sequence_fps)
+            if current_index < len(fps_options) - 1:
+                sequence_fps = fps_options[current_index + 1]
+            else:
+                # If already at max fps and frames are still not enough, use the highest possible fps
+                break
+        elif num_images > max_frames:
+            # Decrease fps to the next lower option if above the maximum frame count
+            current_index = fps_options.index(sequence_fps)
+            if current_index > 0:
+                sequence_fps = fps_options[current_index - 1]
+            else:
+                # If already at minimum fps and frames are still too many, use the lowest possible fps
+                break
+        else:
+            # If the number of frames is within the acceptable range, stop adjusting
+            break
+
+    return frames, sequence_fps
