@@ -64,33 +64,12 @@ def calculate_expanded_range(
     return new_start, new_end
 
 
-def convert_frame_number_to_timestamp(current_frame_num, fps=30):
-    """
-    Convert a given frame number to a timestamp in MM:SS.t format, rounded to the nearest tenth of a second.
-    """
-    # Calculate the total number of seconds for the current frame
-    total_seconds = current_frame_num / fps
-
-    # Calculate minutes and seconds
-    minutes = int(total_seconds // 60)
-    seconds = total_seconds % 60
-
-    # Round seconds to the nearest tenth
-    seconds = round(seconds, 1)
-
-    # Format the timestamp as MM:SS.t
-    timestamp = f"{minutes:02}:{seconds:04.1f}"
-
-    return timestamp
-
 
 def add_task_type(dataset):
     for item in dataset:
         for task in item["actions"]["tasks"]:
-            # Extract the first word from the task description and convert it to lowercase
             first_word = task["task"].split()[0].lower()
 
-            # Determine the type of task based on the first word, checked in lowercase for robustness
             if "pick" == first_word:
                 task["task_type"] = "pick"
             elif "put" == first_word:
@@ -108,10 +87,8 @@ def calculate_new_frames(start_frame, end_frame, fps, steps=3, direction="negati
         30 / fps
     )  # Calculate window size based on the video FPS (30) and task FPS
 
-    # Determine the sign based on the direction parameter
     sign = -1 if direction == "negative" else 1
 
-    # Adjust start_frame and end_frame based on the direction and steps
     new_start_frame = max(0, start_frame + sign * steps * window_size)
     new_end_frame = max(0, end_frame + sign * steps * window_size)
 
@@ -150,22 +127,20 @@ def adjust_task_frames(tasks):
                 direction=task["start_check"],
             )
 
-            # Additional adjustment to create modified_start_frame
             task["modified_start_frame"] = adjust_frame(
                 original_frame=task["modified_start_frame"],
                 fps=task["fps"],
-                direction="late",  # Assuming "late" means to move back in time here
+                direction="late", 
                 steps=3,
             )
 
             task["modified_end_frame"] = adjust_frame(
                 original_frame=task["modified_start_frame"],
                 fps=task["fps"],
-                direction="early",  # Assuming "early" means to move forward in time here
+                direction="early",  
                 steps=3,
             )
 
-        # Adjust the end_frame if needed
         if task["end_check"] != "perfect":
             task["modified_end_frame"] = adjust_frame(
                 original_frame=task["modified_end_frame"],
@@ -173,7 +148,6 @@ def adjust_task_frames(tasks):
                 direction=task["end_check"],
             )
 
-            # Additional adjustment to create modified_end_frame
             task["modified_end_frame"] = adjust_frame(
                 original_frame=task["modified_end_frame"],
                 fps=task["fps"],
@@ -181,7 +155,6 @@ def adjust_task_frames(tasks):
                 steps=3,
             )
 
-            # Recalculate modified_start_frame for end adjustments to ensure consistency
             task["modified_start_frame"] = adjust_frame(
                 original_frame=task["modified_end_frame"],
                 fps=task["fps"],
@@ -255,3 +228,43 @@ def add_task_type(dataset):
                 )
 
     return dataset
+
+
+def adjust_fps_to_frame_count(
+    video_path, segment_start, segment_end, initial_fps, min_frames, max_frames
+):
+    """
+    Adjust the frames per second (fps) to ensure the number of frames lies within a specified range.
+    """
+    sequence_fps = initial_fps
+    fps_options = [3, 5, 10]
+    while True:
+        frames = extract_frames_from_video(
+            video_path,
+            start_frame=segment_start,
+            end_frame=segment_end,
+            fps=sequence_fps,
+        )
+        num_images = len(frames)
+
+        if num_images < min_frames:
+            # Increase fps to the next higher option if below the minimum frame count
+            current_index = fps_options.index(sequence_fps)
+            if current_index < len(fps_options) - 1:
+                sequence_fps = fps_options[current_index + 1]
+            else:
+                # If already at max fps and frames are still not enough, use the highest possible fps
+                break
+        elif num_images > max_frames:
+            # Decrease fps to the next lower option if above the maximum frame count
+            current_index = fps_options.index(sequence_fps)
+            if current_index > 0:
+                sequence_fps = fps_options[current_index - 1]
+            else:
+                # If already at minimum fps and frames are still too many, use the lowest possible fps
+                break
+        else:
+            # If the number of frames is within the acceptable range, stop adjusting
+            break
+
+    return frames, sequence_fps
