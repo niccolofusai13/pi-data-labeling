@@ -9,8 +9,8 @@ from video_labeling.prompts.label_frames import (
     REFINED_END_FRAME_PICK,
     REFINED_START_FRAME_DEPOSIT,
     REFINED_END_FRAME_DEPOSIT,
-    TEST_LABEL_PICKUP,
-    TEST_LABEL_DEPOSIT
+    LABEL_PICKUP_ACTION,
+    LABEL_DEPOSIT_ACTION
 )
 from video_labeling.prompts.reflection_checks import (
     CHECK_PICKUP_START_IMAGE_TIMING,
@@ -85,11 +85,11 @@ async def label_action_frame_range(video_path, action_dict, start_frame_of_segme
 
 
     if action_dict["action_type"] == "pick":
-        timestep_prompt = TEST_LABEL_PICKUP.format(
+        timestep_prompt = LABEL_PICKUP_ACTION.format(
             action=action_dict["action"], object=action_dict["object"]
         )
     else:
-        timestep_prompt = TEST_LABEL_DEPOSIT.format(
+        timestep_prompt = LABEL_DEPOSIT_ACTION.format(
             action=action_dict["action"], object=action_dict["object"]
         )
 
