@@ -1,5 +1,5 @@
 SYSTEM_PROMPT = """
-**Comprehensive Video Task Analysis Framework**
+**Comprehensive Video Action Analysis Framework**
 
 **Environment and Components:**
 - **Objects:**
@@ -16,7 +16,7 @@ SYSTEM_PROMPT = """
 - **Robot Mechanism:**
   - Robot Arm equipped with a Gripper
 
-**Task Definitions:**
+**Action Definitions:**
 - **Pick up OBJECT**: Recognized as complete when the robot's gripper has securely grasped the object, and it is fully suspended in the air with no contact with any surfaces.
 - **Put OBJECT into DESTINATION**: Confirmed as complete when the object is inside the destination, and the gripper has retracted, fully releasing the object.
 

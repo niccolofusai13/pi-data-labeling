@@ -12,7 +12,7 @@ from video_labeling.label_frames import (
     label_episode_frame_ranges,
     adjusting_frames_in_episode,
 )
-from video_labeling.checks import remove_erroneous_actions, run_checks
+from video_labeling.checks import run_checks, remove_erroneous_actions
 
 client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 
@@ -44,13 +44,16 @@ async def label_video():
     print(f"Step 3: Labeling the frame range...")
     labeled_frames = await label_episode_frame_ranges(labeled_actions)
 
-    print(f"Step 4: Running checks...")
-    checks_feedback = await run_checks(labeled_frames, fps=5)
+    print(f"Step 4: Removing erroneos actions...")
+    qa_labels = await remove_erroneous_actions(labeled_frames, fps=5)
 
-    print(f"Step 5: Iteratively refining labels until all checks pass...")
+    print(f"Step 5: Running checks...")
+    checks_feedback = await run_checks(qa_labels, fps=5)
+
+    print(f"Step 6: Iteratively refining labels until all checks pass...")
     final_results = await adjusting_frames_in_episode(checks_feedback)
 
-    print(f"Step 6: Done... saving results...")
+    print(f"Done... saving results...")
     output_file_path = os.path.join(RESULTS_OUTPUT_PATH, "test_results.json")
     with open(output_file_path, "w") as file:
         json.dump(final_results, file, indent=4)

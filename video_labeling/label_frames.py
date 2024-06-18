@@ -1,5 +1,6 @@
 import asyncio
 from openai import AsyncOpenAI
+import copy
 
 from config import OPENAI_API_KEY, VIDEO_PATH, FPS_OPTIONS
 from video_labeling.utils import extract_frames_from_video
@@ -32,7 +33,7 @@ async def label_episode_frame_ranges(labeled_actions):
     tasks_to_process = []
     for action in labeled_actions:
         tasks_to_process.append(
-            label_action_frame_range(VIDEO_PATH, action, action['start_frame'])
+            label_action_frame_range(VIDEO_PATH, copy.deepcopy(action))
         )
 
     responses = await asyncio.gather(*tasks_to_process)
@@ -41,7 +42,7 @@ async def label_episode_frame_ranges(labeled_actions):
     return filtered_responses
 
 
-async def label_action_frame_range(video_path, action_dict, start_frame_of_segment):
+async def label_action_frame_range(video_path, action_dict):
     """Process a single robot task by calculating the range, getting frames, and analyzing the task."""
     video_fps = 30
     sequence_fps = 5

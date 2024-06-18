@@ -1,4 +1,5 @@
 import asyncio
+import copy
 from openai import AsyncOpenAI
 
 from config import (
@@ -76,7 +77,7 @@ async def determine_erroneous_action(action, fps=5):
 
 async def remove_erroneous_actions(labeled_timesteps, fps=5):
     tasks_to_process = [
-        determine_erroneous_action(action, fps=fps) for action in labeled_timesteps
+        determine_erroneous_action(copy.deepcopy(action), fps=fps) for action in labeled_timesteps
     ]
     responses = await asyncio.gather(*tasks_to_process)
     return [task for task in responses if task["wrong_object"] != "Yes"]
@@ -112,7 +113,7 @@ async def run_action_check(action, fps=5):
     return action
 
 
-async def run_checks(tasks, fps=5):
-    tasks_to_process = [run_action_check(action, fps=fps) for action in tasks]
+async def run_checks(labeled_actions, fps=5):
+    tasks_to_process = [run_action_check(copy.deepcopy(action), fps=fps) for action in labeled_actions]
     responses = await asyncio.gather(*tasks_to_process)
     return responses

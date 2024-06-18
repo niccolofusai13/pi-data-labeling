@@ -6,3 +6,4 @@ notebook==7.2.1
 ipykernel==6.25.0
 imageio==2.34.1
 python-dotenv==1.0.1
+opencv-python==4.10.0.84
