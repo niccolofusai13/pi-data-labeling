@@ -23,12 +23,18 @@ pi-data-labeling/
 ├── data/
 │   ├── input/             # Input directory for mp4 video files
 │   └── output/            # Output directory for labeled results
-├── notebooks/             # Jupyter notebooks for exploratory analysis (needs cleaning #TODO)
+├── notebooks/             # Jupyter notebooks for exploratory analysis
+│   └── README.md          # Note: Refer to the 'code walkthrough one' notebook for guidance and ignore the others for now.
 ├── qa/                    # Quality assurance scripts and metrics to test the system
 ├── streamlit_demo/        # Streamlit application for demonstrating the system
 ├── tests/                 # Unit tests for the project (currently empty)
 └── video_labeling/        # Core code for video labeling
+    ├── main.py            # Main executable script where all video labeling steps are integrated and run.
+    ├── prompts/           # Directory containing all the predefined prompts used for video labeling tasks.
+    ├── utils.py           # Utility functions 
+    ├── rest...            # All other functions containing the logic for the steps in my main
 ```
+
 
 ### Directory Details
 
