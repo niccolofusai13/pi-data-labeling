@@ -1,4 +1,3 @@
-import cv2
 import asyncio
 from openai import AsyncOpenAI
 
@@ -28,9 +27,8 @@ def add_action_type(action_dict):
         )
     return action_dict
 
-async def label_actions_in_episode(client, video_path, moved_objects, video_chunks):
+async def label_actions_in_episode(client, video_path, moved_objects, video_chunks, fps=1):
     """Labeling which actions took place for each video chunk in an episode"""
-    fps = 1
     tasks = []
     for (start, end), change in zip(video_chunks, moved_objects):
         if change:
@@ -42,7 +40,7 @@ async def label_actions_in_episode(client, video_path, moved_objects, video_chun
                 client,
                 SYSTEM_PROMPT,
                 label_action_prompt,
-                extract_frames_from_video(video_path, start, end, fps=1),
+                extract_frames_from_video(video_path, start, end, fps=fps),
                 extract_json=True,
             )
             tasks.append(task)

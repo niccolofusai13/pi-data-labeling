@@ -53,7 +53,7 @@
 
 
 LABEL_PICKUP_ACTION = """
-### Analyze the Robot's Pickup Task: {action}
+### Analyze the Robot's Pickup Action: {action}
 
 **Context:**
 You are assigned to analyze a sequence in which a robot attempts to pick up {object}. The aim is to meticulously identify the exact frames that mark the start and conclusion of the pickup action.
@@ -85,7 +85,7 @@ You are assigned to analyze a sequence in which a robot attempts to pick up {obj
 """
 
 LABEL_DEPOSIT_ACTION = """
-### Analyze the Robot's Depositing Task: {action}
+### Analyze the Robot's Depositing Action: {action}
 
 **Context:**
 You are tasked with analyzing a sequence where a robot is engaged in depositing {object} into its designated destination. Your role is to carefully examine the footage and determine the precise frames that mark the beginning and conclusion of the depositing action.
@@ -119,7 +119,7 @@ You are tasked with analyzing a sequence where a robot is engaged in depositing 
 
 # Relabel frames but start and end frame seperately with even higher FPS
 REFINED_START_FRAME_PICK = """
-### Analyze the Robot's Pickup Task: {action}
+### Analyze the Robot's Pickup Action: {action}
 
 **Context:**
 You are assigned to analyze a sequence in which a robot attempts to pick up {object}. The aim is to identify the correct START image that matches the criteria below.
@@ -151,7 +151,7 @@ Example:
 
 
 REFINED_END_FRAME_PICK = """
-### Analyze the Robot's Pickup Task: {action}
+### Analyze the Robot's Pickup Action: {action}
 
 **Context:**
 You are assigned to analyze a sequence in which a robot attempts to pick up {object}. The aim is to identify the correct END image that matches the criteria below.
@@ -183,7 +183,7 @@ Example:
 
 
 REFINED_START_FRAME_DEPOSIT = """
-### Analyze the Robot's Putting Task: {action}
+### Analyze the Robot's Putting Action: {action}
 
 **Context:**
 You are assigned to analyze a sequence in which a robot attempts to deposit an {object} into a destination. The aim is to identify the correct START image that matches the criteria below.
@@ -215,7 +215,7 @@ Example:
 
 
 REFINED_END_FRAME_DEPOSIT = """
-### Analyze the Robot's Putting Task: {action}
+### Analyze the Robot's Putting Action: {action}
 
 **Context:**
 You are assigned to analyze a sequence in which a robot attempts to deposit an {object} into a destination. The aim is to identify the correct START image that matches the criteria below.

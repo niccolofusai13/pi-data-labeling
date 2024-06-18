@@ -1,10 +1,6 @@
 import asyncio
-from openai import AsyncOpenAI
+import copy
 
-from config import (
-    OPENAI_API_KEY,
-    VIDEO_PATH,
-)
 from video_labeling.utils import extract_frames_from_video
 from video_labeling.prompts.shared import SYSTEM_PROMPT
 
@@ -23,10 +19,9 @@ from video_labeling.utils import (
     adjust_fps_to_frame_count,
 )
 
-client = AsyncOpenAI(api_key=OPENAI_API_KEY)
-
 
 def create_check_prompts(task_type, task_name, object_name):
+    """Creating the prompt template to run the checks"""
     if task_type == "pick":
         start_prompt = CHECK_PICKUP_START_IMAGE_TIMING.format(
             action=task_name, object=object_name
@@ -46,10 +41,12 @@ def create_check_prompts(task_type, task_name, object_name):
     return start_prompt, end_prompt
 
 
-async def determine_erroneous_action(action, fps=5):
+async def determine_erroneous_action(action, client, video_path, fps=5):
+    """Determining if an action doesn't match the description label"""
+
     start_frame, end_frame = action["start_frame"], action["end_frame"]
 
-    frames = extract_frames_from_video(VIDEO_PATH, start_frame, end_frame, fps=fps)
+    frames = extract_frames_from_video(video_path, start_frame, end_frame, fps=fps)
     video_description = await vlm_request(
         client, SYSTEM_PROMPT, VIDEO_DESCRIPTION, frames, extract_json=False
     )
@@ -74,20 +71,21 @@ async def determine_erroneous_action(action, fps=5):
     }
 
 
-async def remove_erroneous_actions(labeled_timesteps, fps=5):
+async def remove_erroneous_actions(client, video_path, labeled_timesteps, fps=5):
+    """Getting rid of all erroneous actions in an episode"""
     tasks_to_process = [
-        determine_erroneous_action(action, fps=fps) for action in labeled_timesteps
+        determine_erroneous_action(copy.deepcopy(action), client, video_path, fps=fps) for action in labeled_timesteps
     ]
     responses = await asyncio.gather(*tasks_to_process)
     return [task for task in responses if task["wrong_object"] != "Yes"]
 
 
-async def run_action_check(action, fps=5):
-
+async def check_action_frame_number_labels(action, client, video_path, fps=5):
+    """Check timing  """
     start_frame, end_frame = action["start_frame"], action["end_frame"]
 
     frames, _ = adjust_fps_to_frame_count(
-        VIDEO_PATH, start_frame, end_frame, fps, 5, 20
+        video_path, start_frame, end_frame, fps, 5, 20
     )
 
     start_prompt, end_prompt = create_check_prompts(
@@ -112,7 +110,7 @@ async def run_action_check(action, fps=5):
     return action
 
 
-async def run_checks(tasks, fps=5):
-    tasks_to_process = [run_action_check(action, fps=fps) for action in tasks]
+async def check_episode_frame_number_labels(client, video_path, labeled_actions, fps=5):
+    tasks_to_process = [check_action_frame_number_labels(copy.deepcopy(action), client, video_path, fps=fps) for action in labeled_actions]
     responses = await asyncio.gather(*tasks_to_process)
     return responses
