@@ -1,8 +1,7 @@
 import asyncio
-from openai import AsyncOpenAI
 import copy
 
-from config import OPENAI_API_KEY, VIDEO_PATH, FPS_OPTIONS
+from config import FPS_OPTIONS
 from video_labeling.utils import extract_frames_from_video
 from video_labeling.prompts.shared import SYSTEM_PROMPT
 from video_labeling.prompts.label_frames import (
@@ -26,14 +25,12 @@ from video_labeling.utils import (
     calculate_expanded_range,
 )
 
-client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 
-
-async def label_episode_frame_ranges(labeled_actions):
+async def label_episode_frame_ranges(client, video_path, labeled_actions, fps=5):
     tasks_to_process = []
     for action in labeled_actions:
         tasks_to_process.append(
-            label_action_frame_range(VIDEO_PATH, copy.deepcopy(action))
+            label_action_frame_range(client, video_path, copy.deepcopy(action), fps)
         )
 
     responses = await asyncio.gather(*tasks_to_process)
@@ -42,47 +39,43 @@ async def label_episode_frame_ranges(labeled_actions):
     return filtered_responses
 
 
-async def label_action_frame_range(video_path, action_dict):
+async def label_action_frame_range(client, video_path, action_dict, fps):
     """Process a single robot task by calculating the range, getting frames, and analyzing the task."""
     video_fps = 30
-    sequence_fps = 5
+    # sequence_fps = 5
     buffer_multiplier = 2
 
     expanded_start, expanded_end = calculate_expanded_range(action_dict['start_frame'], action_dict['end_frame'], buffer_multiplier=buffer_multiplier)
     
     frames = extract_frames_from_video(
-        video_path, start_frame=expanded_start, end_frame=expanded_end, fps=sequence_fps
+        video_path, start_frame=expanded_start, end_frame=expanded_end, fps=fps
     )
-    num_images = len(frames)
 
-    while True:
+    # We want to make sure images are between the desired amount of 8 - 18
+    while not (8 <= len(frames) <= 18):
+        if len(frames) < 8:
+            # Increase fps to the next higher option if below the minimum frame count
+            current_index = FPS_OPTIONS.index(fps)
+            if current_index < len(FPS_OPTIONS) - 1:
+                fps = FPS_OPTIONS[current_index + 1]
+            else:
+                # If already at max fps and frames are still not enough, exit the loop
+                break
+        elif len(frames) > 18:
+            # Decrease fps to the next lower option if above the maximum frame count
+            current_index = FPS_OPTIONS.index(fps)
+            if current_index > 0:
+                fps = FPS_OPTIONS[current_index - 1]
+            else:
+                # If already at minimum fps and frames are still too many, exit the loop
+                break
+
         frames = extract_frames_from_video(
             video_path,
             start_frame=expanded_start,
             end_frame=expanded_end,
-            fps=sequence_fps,
+            fps=fps,
         )
-        num_images = len(frames)
-
-        if num_images < 8:
-            # Increase fps to the next higher option if below the minimum frame count
-            current_index = FPS_OPTIONS.index(sequence_fps)
-            if current_index < len(FPS_OPTIONS) - 1:
-                sequence_fps = FPS_OPTIONS[current_index + 1]
-            else:
-                # If already at max fps and frames are still not enough, break the loop
-                break
-        elif num_images > 18:
-            # Decrease fps to the next lower option if above the maximum frame count
-            current_index = FPS_OPTIONS.index(sequence_fps)
-            if current_index > 0:
-                sequence_fps = FPS_OPTIONS[current_index - 1]
-            else:
-                # If already at minimum fps and frames are still too many, break the loop
-                break
-        else:
-            # If the number of frames is within the acceptable range, break the loop
-            break
 
 
     if action_dict["action_type"] == "pick":
@@ -108,8 +101,8 @@ async def label_action_frame_range(video_path, action_dict):
         return None
     
 
-    start_frame = expanded_start + (start_image_number - 1) * video_fps / sequence_fps
-    end_frame = expanded_start + (end_image_number) * video_fps / sequence_fps
+    start_frame = expanded_start + (start_image_number - 1) * video_fps / fps
+    end_frame = expanded_start + (end_image_number) * video_fps / fps
 
     result = {
         "action": action_dict["action"],
@@ -117,7 +110,7 @@ async def label_action_frame_range(video_path, action_dict):
         "end_image": end_image_number,
         "start_frame": start_frame,
         "end_frame": end_frame,
-        "fps": sequence_fps,
+        "fps": fps,
         "action_type": action_dict["action_type"],
         "object": action_dict["object"],
     }
@@ -128,7 +121,7 @@ async def label_action_frame_range(video_path, action_dict):
 
 
 
-async def adjust_frames_for_action(action_dict):
+async def adjust_frames_for_action(action_dict, client, video_path, fps):
     """Process a single robot task by calculating the range, getting frames, and analyzing the task."""
     action_type = action_dict["action_type"]
     object_name = action_dict["object"]
@@ -136,19 +129,16 @@ async def adjust_frames_for_action(action_dict):
         action_dict["modified_start_frame"],
         action_dict["modified_end_frame"],
     )
-    sequence_fps = 5  # Assuming a fixed FPS for extraction
     need_modification = action_dict["need_modification"]
 
     if not need_modification:
         return action_dict
 
     while need_modification:
-        # Extract frames for analysis
         frames = extract_frames_from_video(
-            VIDEO_PATH, start_frame=start_frame, end_frame=end_frame, fps=sequence_fps
+            video_path, start_frame=start_frame, end_frame=end_frame, fps=fps
         )
 
-        # Determine prompts based on task type
         if action_type == "pick":
             start_prompt = REFINED_START_FRAME_PICK.format(
                 action=action_dict, object=object_name
@@ -226,10 +216,10 @@ async def adjust_frames_for_action(action_dict):
         return action_dict
 
 
-async def adjusting_frames_in_episode(tasks):
-    adjusted_tasks = adjust_task_frames(tasks)
+async def adjusting_frames_in_episode(client, video_path, labeled_results, fps=5):
+    adjusted_tasks = adjust_task_frames(labeled_results)
 
-    tasks_to_process = [adjust_frames_for_action(action) for action in adjusted_tasks]
+    tasks_to_process = [adjust_frames_for_action(copy.deepcopy(action), client, video_path, fps) for action in adjusted_tasks]
     responses = await asyncio.gather(*tasks_to_process)
     return responses
 
