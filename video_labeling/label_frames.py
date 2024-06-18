@@ -42,7 +42,6 @@ async def label_episode_frame_ranges(client, video_path, labeled_actions, fps=5)
 async def label_action_frame_range(client, video_path, action_dict, fps):
     """Process a single robot task by calculating the range, getting frames, and analyzing the task."""
     video_fps = 30
-    # sequence_fps = 5
     buffer_multiplier = 2
 
     expanded_start, expanded_end = calculate_expanded_range(action_dict['start_frame'], action_dict['end_frame'], buffer_multiplier=buffer_multiplier)
