@@ -53,13 +53,12 @@ def check_response_for_before_after(response):
         return "after"
     return None
 
-def adjust_task_frame(action):
+def create_smaller_frame_window_from_checks(action):
     """
     Adjust the frame indices for a list of tasks based on 'start_check' and 'end_check'.
     It sets modified start and end frames to provide a buffer around the adjusted frames.
     """
   
-
     action["need_modification"] = action["start_check"] != "perfect" or action["end_check"] != "perfect"
     action["modified_start_start_frame"] = action["start_frame"] 
     action["modified_end_end_frame"] = action["end_frame"] 
@@ -169,39 +168,6 @@ async def vlm_request(
         response = extract_json_from_response(response)
 
     return response
-
-
-# async def vlm_request(
-#     client, system_prompt, prompt, frames, temperature=0, extract_json=True
-# ):  
-#     image_content = [
-#         {
-#             "type": "image_url",
-#             "image_url": f"data:image/jpg;base64,{x}"
-#         } for x in frames
-#     ]
-
-#     # Create the messages list with correct formatting
-#     messages = [
-#         {"role": "system", "content": system_prompt},
-#         {"role": "user", "content": [
-#             "These are a sequence of images from the video. The first image is the start image, and the final image is the end image.",
-#             *image_content,
-#             prompt
-#         ]}
-#     ]
-#     response = await client.chat.completions.create(
-#         model=MODEL,
-#         messages=messages,
-#         temperature=temperature,
-#     )
-
-#     response = response.choices[0].message.content
-
-#     if extract_json:
-#         response = extract_json_from_response(response)
-
-#     return response
 
 
 

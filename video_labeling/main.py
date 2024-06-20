@@ -14,7 +14,6 @@ from video_labeling.label_frames import (
 )
 from video_labeling.checks import (
     check_episode_frame_number_labels,
-    # adjust_wrong_pickup_start_labels
 )
 
 video_path = VIDEO_PATH
@@ -57,9 +56,9 @@ async def label_video():
     )
 
 
-    output_file_path = os.path.join("new_labeled_objects_checkpoint.json")
-    with open(output_file_path, "w") as file:
-        json.dump(labeled_frames, file, indent=4)
+    # output_file_path = os.path.join("new_labeled_objects_checkpoint.json")
+    # with open(output_file_path, "w") as file:
+    #     json.dump(labeled_frames, file, indent=4)
 
     
     # file_path = '/Users/niccolofusai/Documents/pi/new_labeled_objects_checkpoint.json'
@@ -72,9 +71,9 @@ async def label_video():
     print(f"Step 4: Running checks...")
     checks_feedback = await check_episode_frame_number_labels(client, video_path, labeled_frames, fps=5)
 
-    output_file_path = os.path.join("checks_feedback_checkpoint.json")
-    with open(output_file_path, "w") as file:
-        json.dump(checks_feedback, file, indent=4)
+    # output_file_path = os.path.join("checks_feedback_checkpoint.json")
+    # with open(output_file_path, "w") as file:
+    #     json.dump(checks_feedback, file, indent=4)
 
     # file_path = '/Users/niccolofusai/Documents/pi/checks_feedback_checkpoint.json'
 

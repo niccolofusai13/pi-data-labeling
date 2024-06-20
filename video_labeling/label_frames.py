@@ -20,12 +20,10 @@ from video_labeling.prompts.reflection_checks import (
 )
 
 from video_labeling.utils import (
-    adjust_task_frames,
     vlm_request,
     calculate_expanded_range,
-    adjust_frame_indices, 
     adjust_fps_to_frame_count, 
-    adjust_task_frame
+    create_smaller_frame_window_from_checks
 )
 
 
@@ -140,192 +138,155 @@ def define_put_prompts(action, object_name):
 
 
 
-# async def adjust_frames_for_action(action_dict, client, video_path, fps):
-#     """Process a single robot task by calculating the range, getting frames, and analyzing the task."""
-#     action_type = action_dict["action_type"]
-#     action = action_dict["action"]
-#     object_name = action_dict["object"]
-#     start_check = action_dict["start_check"]
-#     counter= 0
-
-#     # only for pick start frame
-#     while start_check == "wrong_object" and counter <= 3: 
-        
-#         action_dict["start_frame"] += 30
-
-#         frames, _ = adjust_fps_to_frame_count(
-#             video_path, action_dict["start_frame"], action_dict["end_frame"], fps, 5, 20
-#         )
-
-#         start_image_number = await vlm_request(
-#             client, SYSTEM_PROMPT, REFINED_START_FRAME_PICK, frames, extract_json=True
-#         )
-
-#         action_dict["start_frame"] += (start_image_number['answer'] - 1) * 30 / fps
-
-#         frames, _ = adjust_fps_to_frame_count(
-#             video_path, action_dict["start_frame"], action_dict["end_frame"], fps, 5, 20
-#         )
-
-#         start_check = await vlm_request(
-#                 client,
-#                 SYSTEM_PROMPT,
-#                 CHECK_PICKUP_START_IMAGE_TIMING,
-#                 frames,
-#                 temperature=0.2,
-#                 extract_json=True,
-#             )
-        
-#         counter += 1
-#         print(f"the action is: {action_dict['action']} and the check is: {start_check} after round {counter}")
-    
-#     action_dict = adjust_task_frame(action_dict)
-
-#     if not action_dict["need_modification"]:
-#         return action_dict
-
-#     counter = 0 # reset it
-#     while action_dict["need_modification"] and counter <3:
-#         print(f"action failing here is: {action_dict['action']}")
-
-#         if action_type == "pick":
-#             prompts = define_pick_prompts(action, object_name)
-#         elif action_type == "put":
-#             prompts = define_put_prompts(action, object_name)
-#         else:
-#             raise ValueError(f"Unsupported task type: {action_type}")
-
-#         if action_dict["start_check"] != "perfect":
-#             frames = extract_frames_from_video(
-#                 video_path, start_frame=action_dict["modified_start_start_frame"], end_frame=action_dict["modified_start_end_frame"], fps=fps
-#             )
-#             start_frame = await vlm_request(
-#                 client,
-#                 SYSTEM_PROMPT,
-#                 prompts["start_label_prompt"],
-#                 frames,
-#                 temperature=0.2,
-#                 extract_json=True,
-#             )
-
-#             if start_frame is None: 
-#                 continue
-#             start_image_number = start_frame.get("answer")
-#             if start_image_number is None: 
-#                 continue
-            
-#             action_dict["modified_start_start_frame"] += (start_image_number - 1) * 30 / fps
-#             frames = extract_frames_from_video(
-#                 video_path, start_frame=action_dict["modified_start_start_frame"], end_frame=action_dict["modified_start_end_frame"], fps=fps
-#             )
-
-#             if len(frames)==0: 
-#                 continue
-
-            
-#             check_response = await vlm_request(
-#                 client,
-#                 SYSTEM_PROMPT,
-#                 prompts["start_check_prompt"],
-#                 frames,
-#                 temperature=0.2,
-#                 extract_json=True,
-#             )
-
-
-#             action_dict["start_check"] = check_response["answer"]
-#             if action_dict["start_check"] == "perfect": 
-#                 print('\n\n')
-#                 print(f"check_response for {action_dict['action']} is {check_response}")
-#                 print(f"modified_start_frame for {action_dict['action']} is: {action_dict['modified_start_start_frame']} and modified_end_frame is {action_dict['modified_start_end_frame']}")
-#                 print('\n\n')
-#                 action_dict["start_frame"] = action_dict["modified_start_start_frame"]
-#             else: 
-#                 print('\n\n')
-#                 print(f"check_response for {action_dict['action']} is {check_response}")
-#                 print(f"modified_start_frame for {action_dict['action']} is: {action_dict['modified_start_start_frame']} and modified_end_frame is {action_dict['modified_start_end_frame']}")
-#                 print('\n\n')
-
-#         if action_dict["end_check"] != "perfect":
-
-#             frames = extract_frames_from_video(
-#                 video_path, start_frame=action_dict["modified_end_start_frame"], end_frame=action_dict["modified_end_end_frame"], fps=fps
-#             )
-#             end_frame = await vlm_request(
-#                 client,
-#                 SYSTEM_PROMPT,
-#                 prompts["end_label_prompt"],
-#                 frames,
-#                 temperature=0.2,
-#                 extract_json=True,
-#             )
-
-#             if end_frame is None: 
-#                 continue
-#             end_image_number = end_frame.get("answer")
-#             if end_image_number is None: 
-#                 continue
-
-            
-
-#             action_dict["modified_end_end_frame"] = action_dict["modified_end_start_frame"]+ end_image_number * 30 / fps
-#             frames = extract_frames_from_video(
-#                 video_path, start_frame=action_dict["modified_end_start_frame"], end_frame=action_dict["modified_end_end_frame"], fps=fps
-#             )
-
-#             if len(frames)==0: 
-#                 continue
-
-#             check_response = await vlm_request(
-#                 client,
-#                 SYSTEM_PROMPT,
-#                 prompts["end_check_prompt"],
-#                 frames,
-#                 temperature=0.2,
-#                 extract_json=True,
-#             )
-
-#             action_dict["end_check"] = check_response["answer"]
-#             if action_dict["end_check"] == "perfect": 
-#                 print('\n\n')
-#                 print(f"check_response for {action_dict['action']} is {check_response}")
-#                 print(f"modified_start_frame for {action_dict['action']} is: {action_dict['modified_end_start_frame']} and modified_end_frame is {action_dict['modified_end_end_frame']}")
-#                 print('\n\n')
-#                 action_dict["end_frame"] = action_dict["modified_end_end_frame"]
-#             else: 
-#                 print('\n\n')
-#                 print(f"check_response for {action_dict['action']} is {check_response}")
-#                 print(f"modified_start_frame for {action_dict['action']} is: {action_dict['modified_end_start_frame']} and modified_end_frame is {action_dict['modified_end_end_frame']}")
-#                 print('\n\n')
-        
-#         # Re-evaluate need for modification
-#         action_dict["need_modification"] = (
-#             action_dict["start_check"] != "perfect" or action_dict["end_check"] != "perfect"
-#         )
-
-#         counter += 1
-
-#         if counter >= 3:
-#             action_dict["start_frame"] = action_dict["modified_start_start_frame"]
-#             action_dict["end_frame"] = action_dict["modified_end_end_frame"]
-
-#     return action_dict
-
-
-
 async def adjust_frames_for_action(action_dict, client, video_path, fps):
     """Process a single robot task by calculating the range, getting frames, and analyzing the task."""
-    action_type = action_dict["action_type"]
-    action = action_dict["action"]
-    object_name = action_dict["object"]
-    start_check = action_dict["start_check"]
-    counter= 0
+    await adjust_wrong_actions(action_dict, client, video_path, fps)
+    action_dict = create_smaller_frame_window_from_checks(action_dict)
 
-    # only for pick start frame
+    if action_dict["need_modification"]:
+        await refine_action_frames(action_dict, client, video_path, fps)
+
+    return action_dict
+
+
+async def refine_action_frames(action_dict, client, video_path, fps):
+    """Refines the action frames for better accuracy if needed."""
+    counter = 0
+    if action_dict["action_type"] == "pick":
+        prompts = define_pick_prompts(action_dict["action"], action_dict["object"])
+    elif action_dict["action_type"] == "put":
+        prompts = define_put_prompts(action_dict["action"], action_dict["object"])
+    else:
+        raise ValueError(f"Unsupported task type: {action_dict['action_type']}")
+        
+    while action_dict["need_modification"] and counter < 3:
+        print(f"Action failing here is {action_dict['action']}.")
+        if action_dict["start_check"] != "perfect":
+            await adjust_start_frame_section(action_dict, prompts, fps, client, video_path)
+        if action_dict["end_check"] != "perfect":
+            await adjust_end_frame_section(action_dict, prompts, fps, client, video_path)
+
+        action_dict["need_modification"] = (
+            action_dict["start_check"] != "perfect" or action_dict["end_check"] != "perfect"
+        )
+        print(f"Re-evaluation needed to modify: {action_dict['need_modification']}")
+        counter += 1
+
+        
+
+async def adjust_start_frame_section(action_dict, prompts, fps, client, video_path): 
+    """Adjust the start frame"""
+    frames = extract_frames_from_video(
+        video_path, start_frame=action_dict["modified_start_start_frame"], end_frame=action_dict["modified_start_end_frame"], fps=fps
+    )
+    start_frame = await vlm_request(
+        client,
+        SYSTEM_PROMPT,
+        prompts["start_label_prompt"],
+        frames,
+        temperature=0.2,
+        extract_json=True,
+    )
+
+    if start_frame is None: 
+        return 
+    start_image_number = start_frame.get("answer")
+    if start_image_number is None: 
+        return 
+    
+    action_dict["modified_start_start_frame"] += (start_image_number - 1) * 30 / fps
+    frames = extract_frames_from_video(
+        video_path, start_frame=action_dict["modified_start_start_frame"], end_frame=action_dict["modified_start_end_frame"], fps=fps
+    )
+
+    if len(frames)==0: 
+        return
+
+    
+    check_response = await vlm_request(
+        client,
+        SYSTEM_PROMPT,
+        prompts["start_check_prompt"],
+        frames,
+        temperature=0.2,
+        extract_json=True,
+    )
+
+
+    action_dict["start_check"] = check_response["answer"]
+    if action_dict["start_check"] == "perfect": 
+        print('\n\n')
+        print(f"start check_response for {action_dict['action']} is {action_dict['start_check']}")
+        print(f"modified_start_frame for {action_dict['action']} is: {action_dict['modified_start_start_frame']} and modified_end_frame is {action_dict['modified_start_end_frame']}")
+        print('\n\n')
+        action_dict["start_frame"] = action_dict["modified_start_start_frame"]
+    else: 
+        print('\n\n')
+        print(f"start check_response for {action_dict['action']} is {action_dict['start_check']}")
+        print(f"modified_start_frame for {action_dict['action']} is: {action_dict['modified_start_start_frame']} and modified_end_frame is {action_dict['modified_start_end_frame']}")
+        print('\n\n')
+
+
+async def adjust_end_frame_section(action_dict, prompts, fps, client, video_path): 
+    frames = extract_frames_from_video(
+        video_path, start_frame=action_dict["modified_end_start_frame"], end_frame=action_dict["modified_end_end_frame"], fps=fps
+    )
+    end_frame = await vlm_request(
+        client,
+        SYSTEM_PROMPT,
+        prompts["end_label_prompt"],
+        frames,
+        temperature=0.2,
+        extract_json=True,
+    )
+
+    if end_frame is None: 
+        return
+    end_image_number = end_frame.get("answer")
+    if end_image_number is None: 
+        return
+
+    
+
+    action_dict["modified_end_end_frame"] = action_dict["modified_end_start_frame"]+ end_image_number * 30 / fps
+    frames = extract_frames_from_video(
+        video_path, start_frame=action_dict["modified_end_start_frame"], end_frame=action_dict["modified_end_end_frame"], fps=fps
+    )
+
+    if len(frames)==0: 
+        return
+
+    check_response = await vlm_request(
+        client,
+        SYSTEM_PROMPT,
+        prompts["end_check_prompt"],
+        frames,
+        temperature=0.2,
+        extract_json=True,
+    )
+
+    action_dict["end_check"] = check_response["answer"]
+    if action_dict["end_check"] == "perfect": 
+        print('\n\n')
+        print(f"end check_response for {action_dict['action']} is {action_dict['end_check']}")
+        print(f"modified_start_frame for {action_dict['action']} is: {action_dict['modified_end_start_frame']} and modified_end_frame is {action_dict['modified_end_end_frame']}")
+        print('\n\n')
+        action_dict["end_frame"] = action_dict["modified_end_end_frame"]
+    else: 
+        print('\n\n')
+        print(f"end check_response for {action_dict['action']} is {action_dict['end_check']}")
+        print(f"modified_start_frame for {action_dict['action']} is: {action_dict['modified_end_start_frame']} and modified_end_frame is {action_dict['modified_end_end_frame']}")
+        print('\n\n')
+
+
+async def adjust_wrong_actions(action_dict, client, video_path, fps):
+    """Adjusts start frames based on object detection correctness."""
+    # need to account for cases here where the start_check doesnt return "perfect" 
+    # TO DO
+    counter = 0
+    start_check = action_dict["start_check"]
     while start_check == "wrong_object" and counter <= 3: 
-        # pdb.set_trace()
         start_frame = action_dict["start_frame"] + 30
-        # action_dict["start_frame"] += 30
 
         frames, _ = adjust_fps_to_frame_count(
             video_path, start_frame, action_dict["end_frame"], fps, 5, 20
@@ -365,148 +326,12 @@ async def adjust_frames_for_action(action_dict, client, video_path, fps):
         counter += 1
         print(f"the action is: {action_dict['action']} and the check is: {start_check} after round {counter} and start frame is {action_dict['start_frame']}")
     
-    action_dict = adjust_task_frame(action_dict)
 
-    if not action_dict["need_modification"]:
-        return action_dict
-
-    counter = 0 # reset it
-    while action_dict["need_modification"] and counter <3:
-        print(f"action failing here is {action_dict['action']}. Start check is {action_dict['start_check']} and end check is {action_dict['end_check']}")
-
-        if action_type == "pick":
-            prompts = define_pick_prompts(action, object_name)
-        elif action_type == "put":
-            prompts = define_put_prompts(action, object_name)
-        else:
-            raise ValueError(f"Unsupported task type: {action_type}")
-
-        if action_dict["start_check"] != "perfect":
-            frames = extract_frames_from_video(
-                video_path, start_frame=action_dict["modified_start_start_frame"], end_frame=action_dict["modified_start_end_frame"], fps=fps
-            )
-            start_frame = await vlm_request(
-                client,
-                SYSTEM_PROMPT,
-                prompts["start_label_prompt"],
-                frames,
-                temperature=0.2,
-                extract_json=True,
-            )
-
-            if start_frame is None: 
-                continue
-            start_image_number = start_frame.get("answer")
-            if start_image_number is None: 
-                continue
-            
-            action_dict["modified_start_start_frame"] += (start_image_number - 1) * 30 / fps
-            frames = extract_frames_from_video(
-                video_path, start_frame=action_dict["modified_start_start_frame"], end_frame=action_dict["modified_start_end_frame"], fps=fps
-            )
-
-            if len(frames)==0: 
-                continue
-
-            
-            check_response = await vlm_request(
-                client,
-                SYSTEM_PROMPT,
-                prompts["start_check_prompt"],
-                frames,
-                temperature=0.2,
-                extract_json=True,
-            )
-
-
-            action_dict["start_check"] = check_response["answer"]
-            if action_dict["start_check"] == "perfect": 
-                print('\n\n')
-                print(f"start check_response for {action_dict['action']} is {action_dict['start_check']}")
-                print(f"modified_start_frame for {action_dict['action']} is: {action_dict['modified_start_start_frame']} and modified_end_frame is {action_dict['modified_start_end_frame']}")
-                print('\n\n')
-                action_dict["start_frame"] = action_dict["modified_start_start_frame"]
-            else: 
-                print('\n\n')
-                print(f"start check_response for {action_dict['action']} is {action_dict['start_check']}")
-                print(f"modified_start_frame for {action_dict['action']} is: {action_dict['modified_start_start_frame']} and modified_end_frame is {action_dict['modified_start_end_frame']}")
-                print('\n\n')
-
-        if action_dict["end_check"] != "perfect":
-
-            frames = extract_frames_from_video(
-                video_path, start_frame=action_dict["modified_end_start_frame"], end_frame=action_dict["modified_end_end_frame"], fps=fps
-            )
-            end_frame = await vlm_request(
-                client,
-                SYSTEM_PROMPT,
-                prompts["end_label_prompt"],
-                frames,
-                temperature=0.2,
-                extract_json=True,
-            )
-
-            if end_frame is None: 
-                continue
-            end_image_number = end_frame.get("answer")
-            if end_image_number is None: 
-                continue
-
-            
-
-            action_dict["modified_end_end_frame"] = action_dict["modified_end_start_frame"]+ end_image_number * 30 / fps
-            frames = extract_frames_from_video(
-                video_path, start_frame=action_dict["modified_end_start_frame"], end_frame=action_dict["modified_end_end_frame"], fps=fps
-            )
-
-            if len(frames)==0: 
-                continue
-
-            check_response = await vlm_request(
-                client,
-                SYSTEM_PROMPT,
-                prompts["end_check_prompt"],
-                frames,
-                temperature=0.2,
-                extract_json=True,
-            )
-
-            action_dict["end_check"] = check_response["answer"]
-            if action_dict["end_check"] == "perfect": 
-                print('\n\n')
-                print(f"end check_response for {action_dict['action']} is {action_dict['end_check']}")
-                print(f"modified_start_frame for {action_dict['action']} is: {action_dict['modified_end_start_frame']} and modified_end_frame is {action_dict['modified_end_end_frame']}")
-                print('\n\n')
-                action_dict["end_frame"] = action_dict["modified_end_end_frame"]
-            else: 
-                print('\n\n')
-                print(f"end check_response for {action_dict['action']} is {action_dict['end_check']}")
-                print(f"modified_start_frame for {action_dict['action']} is: {action_dict['modified_end_start_frame']} and modified_end_frame is {action_dict['modified_end_end_frame']}")
-                print('\n\n')
-
-
-        
-        # Re-evaluate need for modification
-        action_dict["need_modification"] = (
-            action_dict["start_check"] != "perfect" or action_dict["end_check"] != "perfect"
-        )
-
-        print(f"reneed to modify is: {action_dict['need_modification']}")
-
-        counter += 1
-
-        if counter >= 3:
-            action_dict["start_frame"] = action_dict["modified_start_start_frame"]
-            action_dict["end_frame"] = action_dict["modified_end_end_frame"]
-
-    return action_dict
 
 
 
 async def adjusting_frames_in_episode(client, video_path, labeled_results, fps=5):
-    # adjusted_tasks = adjust_task_frames(labeled_results)
-    # adjusted_tasks=labeled_results
-
+    """Adjusting the frame labels iteratively until all checks pass"""
     tasks_to_process = [adjust_frames_for_action(copy.deepcopy(action), client, video_path, fps) for action in labeled_results]
     responses = await asyncio.gather(*tasks_to_process)
     filtered_responses = [response for response in responses if response is not None]
