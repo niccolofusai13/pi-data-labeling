@@ -1,119 +1,75 @@
-# # Step 2
-# LABEL_PICKUP_ACTION = """
-# This is a video of a robot doing task: {action}. 
-# The first image in the video is the beginning of the action, and the final image is the end of the action. 
-
-# For tasks like pickup (which this is), there are very strict criteria which define what the beginning and end image should look like for this action. 
-
-# **Beginning image criteria**
-# - The robot gripper should not be in contact with any object
-# - The robot gripper should be about to begin its approach to {object}
-
-# **End image criteria**
-# - The {object} should be in the robot gripper, and airborn
-# - The {object} should not be dropped into any destination (the container / bin). The object should be in the closed gripper, ideally outside of the drop zone. 
-
-# In which image does the robot begin picking up the {object}, and in which image does the robot succesfully pick it up (before depositing it) 
-# Also make sure that if the robot is handling multiple objects in the series of images, you only pick out the ones associated with the object {object}
-
-# Example json output 1: 
-# [Explanation for answer]
-# ```json
-# {{
-# "start_image":2,
-# "end_image":8
-# }}
-# """
-
-# LABEL_DEPOSIT_ACTION = """
-# This is a video of a robot doing task: {action}. 
-# The first image in the video is the beginning of the action, and the final image is the end of the action. 
-
-# For tasks like putting into a destination (which this is), there are very strict criteria which define what the beginning and end image should look like for this action. 
-
-# **Beginning image criteria**
-# - The {object} should be in the robot gripper, and the object should be in the air, above the table. 
-# - The {object} should not be released from the robot gripper, and should not be vertically over the destination (the container or the bin)
-
-# **End image criteria**
-# - The {object} should be deposited in the final destination (the container or the bin)
-# - The robot gripper should have retreated slightly
-
-# In which image does the robot begin depositing the {object}, and in which image does the robot succesfully finish depositing it. 
-# Also make sure that if the robot is handling multiple objects in the series of images, you only pick out the ones associated with the object {object}
-
-# Example json output 1: 
-# [Explanation for answer]
-# ```json
-# {{
-# "start_image":2,
-# "end_image":8
-# }}
-# """
-
-
 LABEL_PICKUP_ACTION = """
-### Analyze the Robot's Pickup Action: {action}
+### Analyze the Robot's Pickup Action
 
-**Context:**
-You are assigned to analyze a sequence in which a robot attempts to pick up {object}. The aim is to meticulously identify the exact frames that mark the start and conclusion of the pickup action.
+**Action Description:**
+The robot attempts to pick up the object `{object}`. Your task is to identify the precise images where the pickup action starts and ends.
 
-**Investigative Focus Points:**
+**Objective:**
+Meticulously determine the exact image numbers marking the start and conclusion of the pickup action involving `{object}`.
 
-**Start Image for Pickup:**
-- **Observation 1:** Seek the frame where the robot's gripper is not in contact with the object {object}. If the gripper is in contact, the image is too late, and the correct start image should be 'before' this one. Ensure the gripper is in a neutral, open position, prepared for the action.
-- **Observation 2:** Confirm that the gripper does not hold any object. If the gripper holds an object, the image is too late, and the start image should be 'before'.
+**Instructions:**
 
-**End Image for Pickup:**
-- **Observation 1:** Look for the frame where {object} is securely held and elevated above the table by the gripper. If the object is not yet picked up or still in contact with the table, the frame is too early, and the end image should be 'after' this one.
-- **Observation 2:** Ensure that the {object} has not been deposited into any destination, such as a container or bin. If the object is already deposited, the image is too late, and the end image should be 'before' this one. The object should be in the air, clearly in the grippers.
+**1. Start Image Criteria for Pickup:**
+   - **Criterion 1:** The robot gripper should not be grasping or holding any objects, including `{object}`
+   - **Criterion 2:** The robot gripper should be about to pick up `{object}`, but has some space in between the gripper and the object.
+   - **Criterion 3:** The gripper should be positioned away from any objects, and the following frames should capture the robot gripper moving towards the `{object}`, before it picks it up. 
 
-**Assignment:**
-- Determine and document the frame number that marks the initiation of the robot's pickup action and the frame that signifies the successful completion of the pickup.
-- Pay meticulous attention to any multiple objects present in the sequence. Focus exclusively on frames involving {object} and ignore any frames where the robot interacts with other objects.
+**2. End Image Criteria for Pickup:**
+   - **Criterion 1:** Identify the image where `{object}` is securely held by the gripper and fully lifted off the table. If `{object}` is still touching the table, select a subsequent frame.
+   - **Criterion 2:** Ensure that `{object}` has not yet started moving towards the destination (bin / container). It should have just been picked up, and not yet started its trajectory towards the destination.
+   - **Criterion 3:** The `{object}` should not be over the container / bin yet.
+   
+**Focus Points:**
+   - Concentrate solely on interactions involving `{object}`.
+   - Ignore any images where the robot interacts with other objects not relevant to the specific pickup action of `{object}`.
 
-**Response Structure:**
-- Provide frame numbers for the start and end of the pickup action. 
+**Expected Deliverables:**
+   - Document the image numbers that correctly represent both the start and end of the pickup action.
+   - Double-check the images against these criteria to ensure accuracy.
 
-**Sample Response:**
-[Explanation]
+**Sample Response Format:**
 ```json
 {{
-  "start_image": 2,
-  "end_image": 8
+  "start_image": [image number],
+  "end_image": [image number]
 }}
 """
 
+
 LABEL_DEPOSIT_ACTION = """
-### Analyze the Robot's Depositing Action: {action}
+### Analyze the Robot's Depositing Action
 
-**Context:**
-You are tasked with analyzing a sequence where a robot is engaged in depositing {object} into its designated destination. Your role is to carefully examine the footage and determine the precise frames that mark the beginning and conclusion of the depositing action.
+**Action Description:**
+The robot is engaged in depositing the object `{object}` into its designated destination. Your task is to identify the precise images where the depositing action begins and ends.
 
-**Investigative Focus Points:**
+**Objective:**
+Accurately determine the exact image numbers marking the start and conclusion of the depositing action involving `{object}`.
 
-**Start Image for Deposit:**
-- **Observation 1:** Look for the frame where the robot’s gripper is securely holding {object}, which should be elevated and not yet over its final destination. If the {object} is already over the destination, the frame is too early, and the start image should be 'after' this one.
-- **Observation 2:** The gripper should have just completed the pickup phase and be moving towards the destination (bin or container). If the gripper is stationary or moving away from the destination, the frame is too late, and the start image should be 'before' this one.
+**Instructions:**
 
-**End Image for Deposit:**
-- **Observation 1:** Identify the frame where the gripper has released {object} into its designated spot. Ensure that the object is visibly settled within the destination. If the {object} is not yet released, the frame is too early, and the end image should be 'after' this one.
-- **Observation 2:** Verify that there is a preceding image where {object} is seen already in the destination, ensuring continuity. If no such image exists, the action might not be fully captured, indicating the end image should be 'after'.
-- **Observation 3:** Look for a clear retreat of the gripper from the destination, highlighting the separation between {object} and the gripper. If the gripper is still in contact with the {object}, the frame is too early, and the end image should be 'after' this one.
+**1. Start Image Criteria for Deposit:**
+   - **Criterion 1:** Identify the image where the robot’s gripper is securely holding `{object}`, which should be elevated and not yet positioned over its final destination. If `{object}` is already positioned over the destination, select an earlier frame as the start.
+   - **Criterion 2:** The gripper should be actively moving towards the destination, having just completed the pickup phase. Images where the gripper is stationary or moving away from the destination are considered too late.
+   - **Criterion 3:** `{object}` must be clearly lifted off the table, ensuring visible space between the table and the object.
 
-**Assignment:**
-- Document the frame number that marks the initiation of the deposit action and the frame that signifies the completion of the placement.
-- Maintain focus on {object} and disregard any interactions with other objects, unless they directly impact the depositing action.
+**2. End Image Criteria for Deposit:**
+   - **Criterion 1:** Locate the image where the gripper has released `{object}` into its designated spot, and the object is visibly settled within the destination. If `{object}` has not been released, the frame is too early.
+   - **Criterion 2:** Confirm the presence of preceding images showing `{object}` already in the destination to ensure continuity. Lack of such frames suggests the need for additional footage.
+   - **Criterion 3:** Search for images showing a clear retreat of the gripper from the destination. Images where the gripper remains in contact with `{object}` are too early.
 
-**Response Structure:**
-- Provide frame numbers for the start and end of the deposit action. 
+**Focus Points:**
+   - Maintain an exclusive focus on interactions involving `{object}`.
+   - Ignore images involving other objects unless they directly impact the depositing action.
 
-**Sample Response:**
-[Explanation]
+**Expected Deliverables:**
+   - Document the image numbers for both the start and end of the deposit action.
+   - Ensure the images meet the detailed criteria listed above for accurate assessment.
+
+**Sample Response Format:**
 ```json
 {{
-  "start_image": 2,
-  "end_image": 9
+  "start_image": [image number],
+  "end_image": [image number]
 }}
 """
 
@@ -132,7 +88,7 @@ The black chopstick is often hard to see, especially when grasped. Please pay sp
 **Criteria needeed for successful START image for PICK UP:**
 - In the first image, the {object} needs to be on the table 
 - In the first image, there is some space between the gripper and the {object}
-- In the first image, the robot has not yet grasped the object
+- In the first image, the robot has not yet grasped the object, but is close to.
 
 **Criteria needeed for successful END image for picking up:**
 - In the final image, the {object} has been lifted off the table, enough to see space between the object and the table.
@@ -141,7 +97,7 @@ The black chopstick is often hard to see, especially when grasped. Please pay sp
 **Instruction:**
 From the images above, which image best describes the START image criteria above.
 
-After reasoning about the answer, return a JSON for your answer.
+After reasoning about the answer, return a JSON for your answer with a number associated to the image that best matches the START image from the ones above.
 Example:  
 ```json
 {{
@@ -164,7 +120,7 @@ The black chopstick is often hard to see, especially when grasped. Please pay sp
 **Criteria needeed for successful START image for PICK UP:**
 - In the first image, the {object} needs to be on the table 
 - In the first image, there is some space between the gripper and the {object}
-- In the first image, the robot has not yet grasped the object
+- In the first image, the robot has not yet grasped the object, but is close to.
 
 **Criteria needeed for successful END image for picking up:**
 - In the final image, the {object} has been lifted off the table, enough to see space between the object and the table.
@@ -173,7 +129,7 @@ The black chopstick is often hard to see, especially when grasped. Please pay sp
 **Instruction:**
 From the images above, which image best describes the END image criteria above.
 
-After reasoning about the answer, return a JSON for your answer.
+After reasoning about the answer, return a JSON for your answer with a number associated to the image that best matches the END image from the ones above.
 Example:  
 ```json
 {{
@@ -201,11 +157,13 @@ The black chopstick is often hard to see, especially when grasped. Please pay sp
 **Criteria needeed for successful END image for depositing an object:**
 - In the final image, the {object} is no longer airborn. 
 - In the final image, the {object} was placed into one of the bin or plastic container
+- In the final image, the robot gripper has retreated 
+
 
 **Instruction:**
 From the images above, which image best describes the START image criteria above.
 
-After reasoning about the answer, return a JSON for your answer.
+After reasoning about the answer, return a JSON for your answer with a number associated to the image that best matches the START image from the ones above.
 Example:  
 ```json
 {{
@@ -233,11 +191,12 @@ The black chopstick is often hard to see, especially when grasped. Please pay sp
 **Criteria needeed for successful END image for depositing an object:**
 - In the final image, the {object} is no longer airborn. 
 - In the final image, the {object} was placed into one of the bin or plastic container
+- In the final image, the robot gripper has retreated 
 
 **Instruction:**
 From the images above, which image best describes the END image criteria above.
 
-After reasoning about the answer, return a JSON for your answer.
+After reasoning about the answer, return a JSON for your answer with a number associated to the image that best matches the END image from the ones above.
 Example:  
 ```json
 {{
