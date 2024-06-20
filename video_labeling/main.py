@@ -55,21 +55,20 @@ async def label_video():
         client, video_path, labeled_actions, fps=5
     )
 
-
     # output_file_path = os.path.join("new_labeled_objects_checkpoint.json")
     # with open(output_file_path, "w") as file:
     #     json.dump(labeled_frames, file, indent=4)
 
-    
     # file_path = '/Users/niccolofusai/Documents/pi/new_labeled_objects_checkpoint.json'
 
     # # Open the file and load the data
     # with open(file_path, 'r') as file:
     #     labeled_frames = json.load(file)
 
-    
     print(f"Step 4: Running checks...")
-    checks_feedback = await check_episode_frame_number_labels(client, video_path, labeled_frames, fps=5)
+    checks_feedback = await check_episode_frame_number_labels(
+        client, video_path, labeled_frames, fps=5
+    )
 
     # output_file_path = os.path.join("checks_feedback_checkpoint.json")
     # with open(output_file_path, "w") as file:
@@ -82,7 +81,9 @@ async def label_video():
     #     checks_feedback = json.load(file)
 
     print(f"Step 5: Iteratively refining labels until all checks pass...")
-    final_results = await adjusting_frames_in_episode(client, video_path, checks_feedback, fps=5)
+    final_results = await adjusting_frames_in_episode(
+        client, video_path, checks_feedback, fps=5
+    )
 
     print(f"Done... saving results...")
     output_file_path = os.path.join(RESULTS_OUTPUT_PATH, "test_results.json")

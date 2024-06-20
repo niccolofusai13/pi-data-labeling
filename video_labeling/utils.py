@@ -39,11 +39,15 @@ def extract_json_from_response(response):
         print(f"Error decoding JSON or accessing response: {e}")
         return None
 
-def calculate_expanded_range(start_frame, end_frame, buffer_multiplier=2): 
-    expanded_start = max(0, start_frame - buffer_multiplier * 30) # this is actually number of seconds - easier imo to count like that
-    expanded_end = end_frame + buffer_multiplier * 30 # this is actually number of seconds - easier imo to count like that
-    return expanded_start, expanded_end
 
+def calculate_expanded_range(start_frame, end_frame, buffer_multiplier=2):
+    expanded_start = max(
+        0, start_frame - buffer_multiplier * 30
+    )  # this is actually number of seconds - easier imo to count like that
+    expanded_end = (
+        end_frame + buffer_multiplier * 30
+    )  # this is actually number of seconds - easier imo to count like that
+    return expanded_start, expanded_end
 
 
 def check_response_for_before_after(response):
@@ -53,36 +57,43 @@ def check_response_for_before_after(response):
         return "after"
     return None
 
+
 def create_smaller_frame_window_from_checks(action):
     """
     Adjust the frame indices for a list of tasks based on 'start_check' and 'end_check'.
     It sets modified start and end frames to provide a buffer around the adjusted frames.
     """
-  
-    action["need_modification"] = action["start_check"] != "perfect" or action["end_check"] != "perfect"
-    action["modified_start_start_frame"] = action["start_frame"] 
-    action["modified_end_end_frame"] = action["end_frame"] 
 
+    action["need_modification"] = (
+        action["start_check"] != "perfect" or action["end_check"] != "perfect"
+    )
+    action["modified_start_start_frame"] = action["start_frame"]
+    action["modified_end_end_frame"] = action["end_frame"]
 
-    if action["start_check"] != "perfect": # only options here are 'early' and 'late'
+    if action["start_check"] != "perfect":  # only options here are 'early' and 'late'
         backward_seconds = 2 if action["start_check"] == "late" else 1
         forward_seconds = 1 if action["start_check"] == "late" else 2
 
         action["modified_start_start_frame"] = adjust_frame_indices(
-            action["start_frame"], "backward", backward_seconds)
+            action["start_frame"], "backward", backward_seconds
+        )
         action["modified_start_end_frame"] = adjust_frame_indices(
-            action["start_frame"], "forward", forward_seconds)
+            action["start_frame"], "forward", forward_seconds
+        )
 
-    if action["end_check"] != "perfect": # only options here are 'early' and 'late'
+    if action["end_check"] != "perfect":  # only options here are 'early' and 'late'
         backward_seconds = 2 if action["end_check"] == "late" else 1
         forward_seconds = 1 if action["end_check"] == "late" else 2
 
         action["modified_end_start_frame"] = adjust_frame_indices(
-            action["end_frame"], "backward", backward_seconds)
+            action["end_frame"], "backward", backward_seconds
+        )
         action["modified_end_end_frame"] = adjust_frame_indices(
-            action["end_frame"], "forward", forward_seconds)
+            action["end_frame"], "forward", forward_seconds
+        )
 
     return action
+
 
 def adjust_task_frames(tasks):
     """
@@ -91,20 +102,23 @@ def adjust_task_frames(tasks):
     """
     for task in tasks:
 
-        task["need_modification"] = task["start_check"] != "perfect" or task["end_check"] != "perfect"
-        task["modified_start_start_frame"] = task["start_frame"] 
-        task["modified_end_end_frame"] = task["end_frame"] 
+        task["need_modification"] = (
+            task["start_check"] != "perfect" or task["end_check"] != "perfect"
+        )
+        task["modified_start_start_frame"] = task["start_frame"]
+        task["modified_end_end_frame"] = task["end_frame"]
 
-    
         if task["start_check"] != "perfect":
             # Adjust start and end frames based on the evaluation of the start condition
             backward_seconds = 2 if task["start_check"] == "late" else 1
             forward_seconds = 1 if task["start_check"] == "late" else 2
 
             task["modified_start_start_frame"] = adjust_frame_indices(
-                task["start_frame"], "backward", backward_seconds)
+                task["start_frame"], "backward", backward_seconds
+            )
             task["modified_start_end_frame"] = adjust_frame_indices(
-                task["start_frame"], "forward", forward_seconds)
+                task["start_frame"], "forward", forward_seconds
+            )
 
         if task["end_check"] != "perfect":
             # Adjust start and end frames based on the evaluation of the end condition
@@ -112,17 +126,19 @@ def adjust_task_frames(tasks):
             forward_seconds = 1 if task["end_check"] == "late" else 2
 
             task["modified_end_start_frame"] = adjust_frame_indices(
-                task["end_frame"], "backward", backward_seconds)
+                task["end_frame"], "backward", backward_seconds
+            )
             task["modified_end_end_frame"] = adjust_frame_indices(
-                task["end_frame"], "forward", forward_seconds)
+                task["end_frame"], "forward", forward_seconds
+            )
 
     return tasks
 
 
 def adjust_frame_indices(original_frame, direction, num_seconds=1):
-    """adjusting the frame to be """
+    """adjusting the frame to be"""
     # there's 30 fps in these videos
-    adjustment = 30  * num_seconds
+    adjustment = 30 * num_seconds
     if direction == "backward":
         return max(0, original_frame - adjustment)
     elif direction == "forward":
@@ -133,29 +149,29 @@ def adjust_frame_indices(original_frame, direction, num_seconds=1):
 
 async def vlm_request(
     client, system_prompt, prompt, frames, temperature=0, extract_json=True
-):  
-    
-    messages =[
-            {"role": "system", "content": system_prompt},
-            {
-                "role": "user",
-                "content": [
-                    "These are a sequence of images from the video. The first image is the start image, and the final image is the end image.",
-                    *map(
-                        lambda x: {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpg;base64,{x}",
-                                "detail": "high",
-                            },
+):
+
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {
+            "role": "user",
+            "content": [
+                "These are a sequence of images from the video. The first image is the start image, and the final image is the end image.",
+                *map(
+                    lambda x: {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/jpg;base64,{x}",
+                            "detail": "high",
                         },
-                        frames,
-                    ),
-                    prompt,
-                ],
-            },
-        ]
-    
+                    },
+                    frames,
+                ),
+                prompt,
+            ],
+        },
+    ]
+
     response = await client.chat.completions.create(
         model=MODEL,
         messages=messages,
@@ -168,8 +184,6 @@ async def vlm_request(
         response = extract_json_from_response(response)
 
     return response
-
-
 
 
 def adjust_fps_to_frame_count(

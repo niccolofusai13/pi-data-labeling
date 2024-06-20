@@ -1,4 +1,3 @@
-
 CHECK_PICKUP_START_IMAGE_TIMING = """
 ### Analyze the Robot's Pickup Action: {action}
 

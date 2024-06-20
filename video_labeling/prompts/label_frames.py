@@ -1,4 +1,3 @@
-
 LABEL_PICKUP_ACTION = """
 ### Analyze the Robot's Pickup Action
 

@@ -46,7 +46,6 @@ async def check_action_frame_number_labels(action, client, video_path, fps=5):
         video_path, action["start_frame"], action["end_frame"], fps, 5, 20
     )
 
-
     start_prompt, end_prompt = create_check_prompts(
         action["action_type"], action["action"], action["object"]
     )
@@ -78,4 +77,3 @@ async def check_episode_frame_number_labels(client, video_path, labeled_actions,
     ]
     responses = await asyncio.gather(*tasks_to_process)
     return responses
-
