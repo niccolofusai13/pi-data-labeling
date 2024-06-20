@@ -46,19 +46,6 @@ def calculate_expanded_range(start_frame, end_frame, buffer_multiplier=2):
 
 
 
-def calculate_new_frames(start_frame, end_frame, fps, steps=3, direction="negative"):
-    window_size = (
-        30 / fps
-    )  # Calculate window size based on the video FPS (30) and task FPS
-
-    sign = -1 if direction == "negative" else 1
-
-    new_start_frame = max(0, start_frame + sign * steps * window_size)
-    new_end_frame = max(0, end_frame + sign * steps * window_size)
-
-    return new_start_frame, new_end_frame
-
-
 def check_response_for_before_after(response):
     if "before" in response.values():
         return "before"
@@ -66,85 +53,90 @@ def check_response_for_before_after(response):
         return "after"
     return None
 
+def adjust_task_frame(action):
+    """
+    Adjust the frame indices for a list of tasks based on 'start_check' and 'end_check'.
+    It sets modified start and end frames to provide a buffer around the adjusted frames.
+    """
+  
+
+    action["need_modification"] = action["start_check"] != "perfect" or action["end_check"] != "perfect"
+    action["modified_start_start_frame"] = action["start_frame"] 
+    action["modified_end_end_frame"] = action["end_frame"] 
+
+
+    if action["start_check"] != "perfect": # only options here are 'early' and 'late'
+        backward_seconds = 2 if action["start_check"] == "late" else 1
+        forward_seconds = 1 if action["start_check"] == "late" else 2
+
+        action["modified_start_start_frame"] = adjust_frame_indices(
+            action["start_frame"], "backward", backward_seconds)
+        action["modified_start_end_frame"] = adjust_frame_indices(
+            action["start_frame"], "forward", forward_seconds)
+
+    if action["end_check"] != "perfect": # only options here are 'early' and 'late'
+        backward_seconds = 2 if action["end_check"] == "late" else 1
+        forward_seconds = 1 if action["end_check"] == "late" else 2
+
+        action["modified_end_start_frame"] = adjust_frame_indices(
+            action["end_frame"], "backward", backward_seconds)
+        action["modified_end_end_frame"] = adjust_frame_indices(
+            action["end_frame"], "forward", forward_seconds)
+
+    return action
 
 def adjust_task_frames(tasks):
     """
     Adjust the frame indices for a list of tasks based on 'start_check' and 'end_check'.
-    It also sets modified start and end frames to provide a buffer around the adjusted frames.
-
-    Args:
-        tasks (list): List of task dictionaries.
+    It sets modified start and end frames to provide a buffer around the adjusted frames.
     """
-    # Check if the task needs modification
     for task in tasks:
-        task["need_modification"] = (
-            task["start_check"] != "perfect" or task["end_check"] != "perfect"
-        )
-        task["modified_start_frame"] = task["start_frame"]
-        task["modified_end_frame"] = task["end_frame"]
 
-        # Adjust the start_frame if needed
+        task["need_modification"] = task["start_check"] != "perfect" or task["end_check"] != "perfect"
+        task["modified_start_start_frame"] = task["start_frame"] 
+        task["modified_end_end_frame"] = task["end_frame"] 
+
+    
         if task["start_check"] != "perfect":
-            task["modified_start_frame"] = adjust_frame(
-                original_frame=task["modified_start_frame"],
-                fps=task["fps"],
-                direction=task["start_check"],
-            )
+            # Adjust start and end frames based on the evaluation of the start condition
+            backward_seconds = 2 if task["start_check"] == "late" else 1
+            forward_seconds = 1 if task["start_check"] == "late" else 2
 
-            task["modified_start_frame"] = adjust_frame(
-                original_frame=task["modified_start_frame"],
-                fps=task["fps"],
-                direction="late", 
-                steps=3,
-            )
-
-            task["modified_end_frame"] = adjust_frame(
-                original_frame=task["modified_start_frame"],
-                fps=task["fps"],
-                direction="early",  
-                steps=3,
-            )
+            task["modified_start_start_frame"] = adjust_frame_indices(
+                task["start_frame"], "backward", backward_seconds)
+            task["modified_start_end_frame"] = adjust_frame_indices(
+                task["start_frame"], "forward", forward_seconds)
 
         if task["end_check"] != "perfect":
-            task["modified_end_frame"] = adjust_frame(
-                original_frame=task["modified_end_frame"],
-                fps=task["fps"],
-                direction=task["end_check"],
-            )
+            # Adjust start and end frames based on the evaluation of the end condition
+            backward_seconds = 2 if task["end_check"] == "late" else 1
+            forward_seconds = 1 if task["end_check"] == "late" else 2
 
-            task["modified_end_frame"] = adjust_frame(
-                original_frame=task["modified_end_frame"],
-                fps=task["fps"],
-                direction="early",  # Move forward in time
-                steps=3,
-            )
-
-            task["modified_start_frame"] = adjust_frame(
-                original_frame=task["modified_end_frame"],
-                fps=task["fps"],
-                direction="late",  # Move back in time
-                steps=3,
-            )
+            task["modified_end_start_frame"] = adjust_frame_indices(
+                task["end_frame"], "backward", backward_seconds)
+            task["modified_end_end_frame"] = adjust_frame_indices(
+                task["end_frame"], "forward", forward_seconds)
 
     return tasks
 
 
-def adjust_frame(original_frame, fps, direction, steps=5):
-    adjustment = (30 / fps) * steps
-    if direction == "early":
-        return max(0, original_frame + adjustment)
-    elif direction == "late":
-        return original_frame - adjustment
+def adjust_frame_indices(original_frame, direction, num_seconds=1):
+    """adjusting the frame to be """
+    # there's 30 fps in these videos
+    adjustment = 30  * num_seconds
+    if direction == "backward":
+        return max(0, original_frame - adjustment)
+    elif direction == "forward":
+        return original_frame + adjustment
     else:
         return original_frame
 
 
 async def vlm_request(
     client, system_prompt, prompt, frames, temperature=0, extract_json=True
-):
-    response = await client.chat.completions.create(
-        model=MODEL,
-        messages=[
+):  
+    
+    messages =[
             {"role": "system", "content": system_prompt},
             {
                 "role": "user",
@@ -163,7 +155,11 @@ async def vlm_request(
                     prompt,
                 ],
             },
-        ],
+        ]
+    
+    response = await client.chat.completions.create(
+        model=MODEL,
+        messages=messages,
         temperature=temperature,
     )
 
@@ -173,6 +169,40 @@ async def vlm_request(
         response = extract_json_from_response(response)
 
     return response
+
+
+# async def vlm_request(
+#     client, system_prompt, prompt, frames, temperature=0, extract_json=True
+# ):  
+#     image_content = [
+#         {
+#             "type": "image_url",
+#             "image_url": f"data:image/jpg;base64,{x}"
+#         } for x in frames
+#     ]
+
+#     # Create the messages list with correct formatting
+#     messages = [
+#         {"role": "system", "content": system_prompt},
+#         {"role": "user", "content": [
+#             "These are a sequence of images from the video. The first image is the start image, and the final image is the end image.",
+#             *image_content,
+#             prompt
+#         ]}
+#     ]
+#     response = await client.chat.completions.create(
+#         model=MODEL,
+#         messages=messages,
+#         temperature=temperature,
+#     )
+
+#     response = response.choices[0].message.content
+
+#     if extract_json:
+#         response = extract_json_from_response(response)
+
+#     return response
+
 
 
 

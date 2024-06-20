@@ -10,9 +10,8 @@ from config import STREAMLIT_RESULTS_PATH, VIDEO_PATH
 from video_labeling.utils import extract_frames_from_video
 
 
-with open(STREAMLIT_RESULTS_PATH, "r") as file:
+with open("data/output/test_results.json", "r") as file:
     results = json.load(file)
-
 
 
 def show_video(task_name, task_df):
@@ -66,7 +65,7 @@ show_video(selected_task_name, task_df)
 #     "The data labeling process in the example below is fully autonomous. \n\n The only input is the mp4 video. "
 # )
 
-# task_df = pd.DataFrame(results)  
+# task_df = pd.DataFrame(results)
 # task_df["duration"] = task_df["end_frame"] - task_df["start_frame"]
 # st.dataframe(task_df[["action", "start_frame", "end_frame", "duration"]])
 
@@ -84,7 +83,7 @@ show_video(selected_task_name, task_df)
 #         VIDEO_PATH,
 #         int(task["start_frame"]),
 #         int(task["end_frame"]),
-#         10, 
+#         10,
 #     )
 
 #     display_video(frames)
@@ -97,7 +96,7 @@ show_video(selected_task_name, task_df)
 #         img_data = base64.b64decode(frame)
 #         img = Image.open(BytesIO(img_data))
 #         img_placeholder.image(img, use_column_width=True)
-#         time.sleep(0.1)  
+#         time.sleep(0.1)
 
 
 # show_video(selected_task_name, task_df)
