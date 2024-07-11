@@ -241,25 +241,7 @@ async def adjust_start_frame_section(action_dict, prompts, fps, client, video_pa
 
     action_dict["start_check"] = check_response["answer"]
     if action_dict["start_check"] == "perfect":
-        print("\n\n")
-        print(
-            f"start check_response for {action_dict['action']} is {action_dict['start_check']}"
-        )
-        print(
-            f"modified_start_frame for {action_dict['action']} is: {action_dict['modified_start_start_frame']} and modified_end_frame is {action_dict['modified_start_end_frame']}"
-        )
-        print("\n\n")
         action_dict["start_frame"] = action_dict["modified_start_start_frame"]
-    else:
-        print("\n\n")
-        print(
-            f"start check_response for {action_dict['action']} is {action_dict['start_check']}"
-        )
-        print(
-            f"modified_start_frame for {action_dict['action']} is: {action_dict['modified_start_start_frame']} and modified_end_frame is {action_dict['modified_start_end_frame']}"
-        )
-        print("\n\n")
-
 
 async def adjust_end_frame_section(action_dict, prompts, fps, client, video_path):
     frames = extract_frames_from_video(
