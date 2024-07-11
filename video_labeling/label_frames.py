@@ -289,24 +289,9 @@ async def adjust_end_frame_section(action_dict, prompts, fps, client, video_path
 
     action_dict["end_check"] = check_response["answer"]
     if action_dict["end_check"] == "perfect":
-        print("\n\n")
-        print(
-            f"end check_response for {action_dict['action']} is {action_dict['end_check']}"
-        )
-        print(
-            f"modified_start_frame for {action_dict['action']} is: {action_dict['modified_end_start_frame']} and modified_end_frame is {action_dict['modified_end_end_frame']}"
-        )
-        print("\n\n")
         action_dict["end_frame"] = action_dict["modified_end_end_frame"]
-    else:
-        print("\n\n")
-        print(
-            f"end check_response for {action_dict['action']} is {action_dict['end_check']}"
-        )
-        print(
-            f"modified_start_frame for {action_dict['action']} is: {action_dict['modified_end_start_frame']} and modified_end_frame is {action_dict['modified_end_end_frame']}"
-        )
-        print("\n\n")
+
+    
 
 
 async def adjust_wrong_actions(action_dict, client, video_path, fps):
