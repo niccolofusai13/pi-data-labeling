@@ -34,6 +34,7 @@ def extract_json_from_response(response):
             return json.loads(match.group(0))
         else:
             print("No JSON object found in the response")
+            print(response)
             return None
     except Exception as e:
         print(f"Error decoding JSON or accessing response: {e}")
@@ -193,7 +194,7 @@ def adjust_fps_to_frame_count(
     Adjust the frames per second (fps) to ensure the number of frames lies within a specified range.
     """
     sequence_fps = initial_fps
-    fps_options = [3, 5, 10]
+    fps_options = [1,2,3, 5, 10]
     while True:
         frames = extract_frames_from_video(
             video_path,

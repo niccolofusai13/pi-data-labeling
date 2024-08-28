@@ -2,17 +2,20 @@ SYSTEM_PROMPT = """
 **Comprehensive Video Action Analysis Framework**
 
 **Environment and Components:**
-- **Objects:**
+- **Potential Objects:**
+  - Cup
+  - Packets
+  - Containers
+  - Lids
+  - Food containers (plastic / aluminium / cardboard)
   - Black Chopstick
-  - Aluminum Takeout Container
-  - Plastic Bowl
-  - Orange Plate
-  - Metal Spoon
-  - Cardboard Food Container
-  - Glass Bowl
+  - Bottle
+  - Bowl
+  - Plate
+  - Spoon
 - **Destinations:**
-  - Transparent Plastic Box (on top of the black table)
-  - Blue Trash Bin (next to the black table)
+  - Box (big box on top of the table where items go into)
+  - Trash Bin (next to the table)
 - **Robot Mechanism:**
   - Robot Arm equipped with a Gripper
 
@@ -21,6 +24,6 @@ SYSTEM_PROMPT = """
 - **Put OBJECT into DESTINATION**: Confirmed as complete when the object is inside the destination, and the gripper has retracted, fully releasing the object.
 
 **Object Destination Rules:**
-- Only the Aluminum Container and Cardboard Food Container go into the blue bin.
-- The rest of the objects go into the clear plastic box on the table.
+- Check carefully where the object being deposited ends up. Anything that could be trash (like packets) often go into the trash. 
+- Plates, bowls, spoons, cups or stuff that we want to keep often goes into the box. For containers, you should check carefully where it is being deposited.
 """

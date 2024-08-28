@@ -18,18 +18,18 @@ The object detection model has detected that the following objects have moved:
 {{
   "tasks": [
     {{
-      "action": "Pick up Plastic Bowl",
-      "details": "Plastic bowl clearly in the robot gripper, has been picked up from the table and is clearly suspended in the air.",
+      "action": "Pick up Bowl",
+      "details": "Bowl clearly in the robot gripper, has been picked up from the table and is clearly suspended in the air.",
       "start_image": 2,
       "end_image": 7,
-      "object": "Plastic Bowl"
+      "object": "Bowl"
     }},
     {{
-      "action": "Put Plastic Bowl into Clear Plastic Box",
-      "details": "After picking up, the plastic bowl is observed being placed into the plastic box. The action is confirmed complete as the robot's gripper retracts and the plastic bowl is no longer in contact with the gripper.",
+      "action": "Put Bowl into container",
+      "details": "After picking up, the bowl is observed being placed into the plastic box. The action is confirmed complete as the robot's gripper retracts and the bowl is no longer in contact with the gripper.",
       "start_image": 7,
       "end_image": 10,
-      "object": "Plastic Bowl"
+      "object": "Bowl"
     }}
   ]
 }}
