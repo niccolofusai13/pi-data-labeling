@@ -4,3 +4,6 @@ selected_frames_blue_bowl
 .ipynb_checkpoints
 __pycache__
 .env
+results_folder
+data/input
+data/output

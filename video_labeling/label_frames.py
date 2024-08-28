@@ -28,6 +28,7 @@ from video_labeling.utils import (
 
 
 async def label_episode_frame_ranges(client, video_path, labeled_actions, fps=5):
+    print(labeled_actions)
     tasks_to_process = []
     for action in labeled_actions:
         tasks_to_process.append(
@@ -80,6 +81,7 @@ async def label_action_frame_range(client, video_path, action_dict, fps):
             end_frame=expanded_end,
             fps=fps,
         )
+    print(action_dict["object"])
 
     if action_dict["action_type"] == "pick":
         timestep_prompt = LABEL_PICKUP_ACTION.format(

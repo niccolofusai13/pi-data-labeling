@@ -4,7 +4,7 @@ from openai import AsyncOpenAI
 from config import (
     OPENAI_API_KEY,
 )
-from video_labeling.utils import extract_frames_from_video
+from video_labeling.utils import extract_frames_from_video, adjust_fps_to_frame_count
 from video_labeling.prompts.shared import SYSTEM_PROMPT
 from video_labeling.prompts.label_actions import LABEL_ACTIONS
 
@@ -38,11 +38,14 @@ async def label_actions_in_episode(
             label_action_prompt = LABEL_ACTIONS.format(
                 moved_objects=moved_objects_string
             )
+
+            frames, fps = adjust_fps_to_frame_count(video_path, start, end, fps, 8, 22)
+            # extract_frames_from_video(video_path, start, end, fps=fps)
             task = vlm_request(
                 client,
                 SYSTEM_PROMPT,
                 label_action_prompt,
-                extract_frames_from_video(video_path, start, end, fps=fps),
+                frames,
                 extract_json=True,
             )
             tasks.append(task)
